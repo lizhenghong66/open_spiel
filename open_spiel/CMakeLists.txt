@@ -15,7 +15,7 @@ if(APPLE)
   #   -undefined dynamic_lookup is necessary for pybind11 linking
   set (CMAKE_CXX_FLAGS "-w -undefined dynamic_lookup")
 else()
-  set (CMAKE_CXX_FLAGS "-Werror")
+  set (CMAKE_CXX_FLAGS "-g -Werror")
 endif()
 
 # Position-independent code is needed for Python extension modules.
@@ -70,7 +70,7 @@ set (OPEN_SPIEL_OBJECTS
   $<TARGET_OBJECTS:games>
   $<TARGET_OBJECTS:game_transforms>
   $<TARGET_OBJECTS:bridge_double_dummy_solver>
-  # $<TARGET_OBJECTS:hanabi_learning_environment>
+  $<TARGET_OBJECTS:hanabi_learning_environment>
   $<TARGET_OBJECTS:algorithms>
 )
 

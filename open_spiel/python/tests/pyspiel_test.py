@@ -44,6 +44,7 @@ class PyspielTest(absltest.TestCase):
         "first_sealed_auction",
         "go",
         "goofspiel",
+        "hanabi",
         "havannah",
         "hex",
         "kuhn_poker",
