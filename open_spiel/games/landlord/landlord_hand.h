@@ -34,6 +34,8 @@ class LandlordHand {
   const std::vector<LandlordCard>& Cards() const { return cards_; }
   
   void AddCard(LandlordCard card);
+  void AddCards(std::vector<LandlordCard> cards);
+
   // Remove  card from hand. Put in discard_pile if not nullptr
   // (pushes the card to the back of the discard_pile vector).
   void RemoveFromHand(LandlordCard card, std::vector<LandlordCard>* discard_pile);

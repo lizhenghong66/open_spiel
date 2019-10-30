@@ -24,6 +24,10 @@ void LandlordHand::AddCard(LandlordCard card) {
   cards_.push_back(card);
 }
 
+void LandlordHand::AddCards(std::vector<LandlordCard> cards){
+  cards_.insert(cards_.end(),cards.begin(),cards.end());
+}
+
 void LandlordHand::RemoveFromHand(LandlordCard card,
                                 std::vector<LandlordCard>* discard_pile) {
   if (discard_pile != nullptr) {

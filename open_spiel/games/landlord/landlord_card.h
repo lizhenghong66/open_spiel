@@ -28,9 +28,13 @@ constexpr int kNumCardsIncludeFlower =kNumCards + 1; // 花牌数量，可以代
 constexpr int kNumPlayers = 3;     // 玩家数量
 constexpr int kNumCardsPerHand = 17;    //每玩家手牌数量
 constexpr int kPoker3_RANK = 0; // 3的rank值
-constexpr int kPokerA_RANK = 11; // 3的rank值
-constexpr int kPoker2_RANK = 12; // 3的rank值
-
+constexpr int kPokerA_RANK = 11; // A的rank值
+constexpr int kPoker2_RANK = 12; // 2的rank值
+constexpr int kPokerJoker_RANK = 13; //小王的rank值
+constexpr int kPokerJOKER_RANK = 14; //大王的rank值
+constexpr int MAX_STRAIGHT_RANK = 11; //连牌的最大rank值。
+constexpr int MAX_RANK = 15; //poker的最大等级值（Flower花牌不能单独出）。
+constexpr int RANK_COUNTS = 16; //poker的等级个数（包括了花牌）。
 /*
 55张牌（包括花牌），从0到54顺序编码。
 */
