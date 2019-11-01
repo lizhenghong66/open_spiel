@@ -340,18 +340,12 @@ PYBIND11_MODULE(pyspiel, m) {
            &TabularBestResponse::GetBestResponsePolicy)
       .def("get_best_response_actions",
            &TabularBestResponse::GetBestResponseActions)
+      .def("set_policy", py::overload_cast<const std::unordered_map<
+                             std::string, open_spiel::ActionsAndProbs>&>(
+                             &TabularBestResponse::SetPolicy))
       .def("set_policy",
-           (void (open_spiel::algorithms::TabularBestResponse::*)(
-               const std::unordered_map<std::string,
-                                        open_spiel::ActionsAndProbs>&)) &
-               TabularBestResponse::SetPolicy);
+           py::overload_cast<const Policy*>(&TabularBestResponse::SetPolicy));
 
-  // A tabular policy represented internally as a map. Note that this
-  // implementation is not directly compatible with the Python TabularPolicy
-  // implementation; the latter is implemented as a table of size
-  // [num_states, num_actions], while this is implemented as a map. It is
-  // non-trivial to convert between the two, but we have a function that does so
-  // in the open_spiel/python/policy.py file.
   py::class_<open_spiel::Policy>(m, "Policy")
       .def("action_probabilities",
            (std::unordered_map<Action, double>(open_spiel::Policy::*)(
@@ -362,10 +356,16 @@ PYBIND11_MODULE(pyspiel, m) {
                const std::string&) const) &
                open_spiel::Policy::GetStatePolicyAsMap);
 
+  // A tabular policy represented internally as a map. Note that this
+  // implementation is not directly compatible with the Python TabularPolicy
+  // implementation; the latter is implemented as a table of size
+  // [num_states, num_actions], while this is implemented as a map. It is
+  // non-trivial to convert between the two, but we have a function that does so
+  // in the open_spiel/python/policy.py file.
   py::class_<open_spiel::TabularPolicy, open_spiel::Policy>(m, "TabularPolicy")
       .def(py::init<const std::unordered_map<std::string, ActionsAndProbs>&>())
-      .def("get_state_policy", &open_spiel::TabularPolicy::GetStatePolicy);
-
+      .def("get_state_policy", &open_spiel::TabularPolicy::GetStatePolicy)
+      .def("policy_table", &open_spiel::TabularPolicy::PolicyTable);
   m.def("UniformRandomPolicy", &open_spiel::GetUniformPolicy);
 
   py::class_<open_spiel::algorithms::CFRSolver>(m, "CFRSolver")
@@ -399,42 +399,38 @@ PYBIND11_MODULE(pyspiel, m) {
            &open_spiel::algorithms::TrajectoryRecorder::RecordBatch);
 
   m.def("create_matrix_game",
-        (std::shared_ptr<const MatrixGame>(*)(
-            const std::string&, const std::string&,
-            const std::vector<std::string>&, const std::vector<std::string>&,
-            const std::vector<std::vector<double>>&,
-            const std::vector<std::vector<double>>&))
-            open_spiel::matrix_game::CreateMatrixGame,
+        py::overload_cast<const std::string&, const std::string&,
+                          const std::vector<std::string>&,
+                          const std::vector<std::string>&,
+                          const std::vector<std::vector<double>>&,
+                          const std::vector<std::vector<double>>&>(
+            &open_spiel::matrix_game::CreateMatrixGame),
         "Creates an arbitrary matrix game from named rows/cols and utilities.");
 
   m.def("create_matrix_game",
-        (std::shared_ptr<const MatrixGame>(*)(
-            const std::vector<std::vector<double>>&,
-            const std::vector<std::vector<double>>&))
-            open_spiel::matrix_game::CreateMatrixGame,
+        py::overload_cast<const std::vector<std::vector<double>>&,
+                          const std::vector<std::vector<double>>&>(
+            &open_spiel::matrix_game::CreateMatrixGame),
         "Creates an arbitrary matrix game from dimensions and utilities.");
 
-  m.def(
-      "load_game",
-      (std::shared_ptr<const Game>(*)(const std::string&))open_spiel::LoadGame,
-      "Returns a new game object for the specified short name using default "
-      "parameters");
+  m.def("load_game",
+        py::overload_cast<const std::string&>(&open_spiel::LoadGame),
+        "Returns a new game object for the specified short name using default "
+        "parameters");
 
   m.def("load_game",
-        (std::shared_ptr<const Game>(*)(
-            const std::string&, const GameParameters&))open_spiel::LoadGame,
+        py::overload_cast<const std::string&, const GameParameters&>(
+            &open_spiel::LoadGame),
         "Returns a new game object for the specified short name using given "
         "parameters");
 
   m.def("load_game_as_turn_based",
-        (std::shared_ptr<const Game>(*)(
-            const std::string&))open_spiel::LoadGameAsTurnBased,
+        py::overload_cast<const std::string&>(&open_spiel::LoadGameAsTurnBased),
         "Converts a simultaneous game into an turn-based game with infosets.");
 
   m.def("load_game_as_turn_based",
-        (std::shared_ptr<const Game>(*)(
-            const std::string&,
-            const GameParameters&))open_spiel::LoadGameAsTurnBased,
+        py::overload_cast<const std::string&, const GameParameters&>(
+            &open_spiel::LoadGameAsTurnBased),
         "Converts a simultaneous game into an turn-based game with infosets.");
 
   m.def("load_matrix_game", open_spiel::algorithms::LoadMatrixGame,
@@ -466,7 +462,7 @@ PYBIND11_MODULE(pyspiel, m) {
         "string serialized by serialize_game_and_state.");
 
   m.def("exploitability",
-        (double (*)(const Game&, const Policy&))Exploitability,
+        py::overload_cast<const Game&, const Policy&>(&Exploitability),
         "Returns the sum of the utility that a best responder wins when when "
         "playing against 1) the player 0 policy contained in `policy` and 2) "
         "the player 1 policy contained in `policy`."
@@ -475,9 +471,9 @@ PYBIND11_MODULE(pyspiel, m) {
         "to it.");
 
   m.def("exploitability",
-        (double (*)(const Game&,
-                    const std::unordered_map<std::string, ActionsAndProbs>&))
-            Exploitability,
+        py::overload_cast<const Game&,
+                    const std::unordered_map<std::string, ActionsAndProbs>&>(
+            &Exploitability),
         "Returns the sum of the utility that a best responder wins when when "
         "playing against 1) the player 0 policy contained in `policy` and 2) "
         "the player 1 policy contained in `policy`."
@@ -485,7 +481,7 @@ PYBIND11_MODULE(pyspiel, m) {
         "games, and raises a SpielFatalError if an incompatible game is passed "
         "to it.");
 
-  m.def("nash_conv", (double (*)(const Game&, const Policy&))NashConv,
+  m.def("nash_conv", py::overload_cast<const Game&, const Policy&>(&NashConv),
         "Returns the sum of the utility that a best responder wins when when "
         "playing against 1) the player 0 policy contained in `policy` and 2) "
         "the player 1 policy contained in `policy`."
@@ -494,9 +490,9 @@ PYBIND11_MODULE(pyspiel, m) {
         "to it.");
 
   m.def("nash_conv",
-        (double (*)(
+        py::overload_cast<
             const Game&,
-            const std::unordered_map<std::string, ActionsAndProbs>&))NashConv,
+            const std::unordered_map<std::string, ActionsAndProbs>&>(&NashConv),
         "Calculates a measure of how far the given policy is from a Nash "
         "equilibrium by returning the sum of the improvements in the value "
         "that each player could obtain by unilaterally changing their strategy "
@@ -536,10 +532,10 @@ PYBIND11_MODULE(pyspiel, m) {
            &open_spiel::algorithms::BatchedTrajectory::ResizeFields);
 
   m.def("record_batched_trajectories",
-        (open_spiel::algorithms::BatchedTrajectory(*)(
+        py::overload_cast<
             const Game&, const std::vector<open_spiel::TabularPolicy>&,
-            const std::unordered_map<std::string, int>&, int, bool, int,
-            int))open_spiel::algorithms::RecordBatchedTrajectory,
+            const std::unordered_map<std::string, int>&, int, bool, int, int>(
+            &open_spiel::algorithms::RecordBatchedTrajectory),
         "Records a batch of trajectories.");
 
   // Set an error handler that will raise exceptions. These exceptions are for
