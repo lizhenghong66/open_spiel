@@ -6,129 +6,83 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <set>
 #include <utility>
+#include <algorithm>
+#include <iostream>
 
 #include "landlord_card.h"
 #include "landlord_move.h"
+#include "util.h"
+namespace landlord_learning_env
+{
+extern std::map<LandlordMoveType,std::string> MoveTypeStringMap;
 
-namespace landlord_learning_env {
-    struct RankMove {
-        LandlordMove::Type type; 
-        RankType startRank;
-        RankType endRank; //非连牌时与startRank相同或忽略（没设置）
-        std::vector<RankType> addedRanks; //带牌时带牌的rank列表。  
+class RankMove
+{
+public:
+    RankMove(LandlordMoveType move_type, RankType startRank,
+             RankType endRank = -1, std::vector<Poker> addedRanks = {}) : type_(move_type), startRank_(startRank), endRank_(endRank),
+                                                                          addedRanks_(addedRanks){};
+    bool operator==(const RankMove &other_move) const
+    {
+        return (type_ == other_move.Type() &&
+                startRank_ == other_move.StartRank() &&
+                endRank_ == other_move.EndRank() &&
+                addedRanks_ == other_move.AddedRanks());
     };
-
-    void addSubContinueRanks(std::vector<std::pair<int,int>> &continueRanks,
-        int startRank,int endRank,int minCount){
-            while(endRank  -  startRank >= minCount){
-                continueRanks.push_back(std::make_pair(startRank,endRank-1));
-                endRank--;
-            }
+    LandlordMoveType Type() const { return type_; }
+    RankType StartRank() const { return startRank_; }
+    RankType EndRank() const { return endRank_; }
+    std::vector<RankType> AddedRanks() const { return addedRanks_; }
+    bool ChangeType(LandlordMoveType newType, std::vector<RankType> addedRanks)
+    {
+        //[TODO]以后考虑增加合法性校验
+        LandlordMoveType type_ = newType;
+        addedRanks_ = addedRanks;
+        return true;
     }
 
-    std::vector<std::pair<int,int>> buildContinueRanks(
-        std::array<RankType,RANK_COUNTS> &rankCounts,   //牌等级数量数组
-        int minCount,  //最少连续数量，如顺子最少5连张。
-        int count            //每种牌数量。
-        ){
-        //查找连续的牌
-        std::vector<std::pair<int,int>> continueRanks;
-        for (int i = 0; i <= kPokerA_RANK-minCount+1; i++){
-            if (rankCounts[i] >= count){//连续牌的下值
-                for (int j = i+1; j <= kPokerA_RANK; j++){
-                    if (rankCounts[j] < count){ //至少两个以上的连牌
-                        if (  j-i >= minCount){
-                            continueRanks.push_back(std::make_pair(i,j-1));
-                            addSubContinueRanks(continueRanks,i,j-1,minCount);
-                        }
-                        break;
-                    }else if (j == kPokerA_RANK && rankCounts[j] >= count && j-i +1>= minCount){
-                        continueRanks.push_back(std::make_pair(i,j));
-                        addSubContinueRanks(continueRanks,i,j,minCount);
-                    }
-                }
-            }
-        }
-        return continueRanks;
+    std::string toString() const{
+        std::string str = "";
+        //str =  std::to_string(type_)  +  ":"  +  std::to_string(startRank_) +  
+        str =  MoveTypeStringMap[type_] +"(" + std::to_string(type_)  +  "):"  +  std::to_string(startRank_) +  
+            " --> " + std::to_string(endRank_)  + ","  +  pokers2String(addedRanks_);
+        return str;
     }
 
-    std::array<RankType,RANK_COUNTS> buildRankCounts(std::vector<LandlordCard> &cards){
-        std::array<RankType,RANK_COUNTS> rankCounts  = {};
-        std::array<std::vector<LandlordCard>,RANK_COUNTS> cardRanks = {{}};
-        for (LandlordCard card  : cards){
-            rankCounts[card.second]++;
-            cardRanks[card.second].push_back(card);
-        }
+private:
+    LandlordMoveType type_;
+    RankType startRank_;
+    RankType endRank_;                 //非连牌时与startRank相同或忽略（没设置）
+    std::vector<RankType> addedRanks_; //带牌时带牌的rank列表。
+};
+using RankCountsArray = std::array<RankType, RANK_COUNTS>;
+using RankCardsArray = std::array<std::vector<LandlordCard>, RANK_COUNTS>;
+using RankCountAndCardArray = std::pair<RankCountsArray,RankCardsArray>;
 
-        for (auto cardRank : cardRanks){
-            for (auto card : cardRank){
-                std::cout << "(" << std::to_string(card.first)  << "," << std::to_string(card.second) << ") ";
-            }
-            std::cout << std::endl;
-        }
-        return rankCounts;
-    }
+/**
+ * 根据手牌数组解析为两个数组（1个每个等级牌的数量，以及每个等级的相关牌列表）
+ */
+RankCountAndCardArray buildRankCounts(std::vector<Poker> &pokers);
+RankCountAndCardArray buildRankCounts(std::vector<LandlordCard> &cards);
+/**
+     * 根据手牌rank（等级）数量直方图（每个等级都占一项，没有则为0，否则记录该等级的牌数量），
+     * 解析可能的连续牌（顺子，两连，三连）。
+     * 参数：
+     * rankCounts：牌等级数量数组
+     * minCount：最少连续数量，如顺子最少5连张。
+     * count：连续的每种牌数量
+     */
+std::vector<std::pair<int, int>> buildContinueRanks(
+    std::array<RankType, RANK_COUNTS> &rankCounts, //牌等级数量数组
+    int minCount,                                  //最少连续数量，如顺子最少5连张。
+    int count                                      //每种牌数量。
+);
 
-    inline void parse(std::vector<LandlordCard> cards){
-        std::array<RankType,RANK_COUNTS> rankCounts = buildRankCounts(cards);
-        //build all possible move(action)
-        //single
-        for (int i = 0; i <= kPokerJOKER_RANK; i++){
-            if (rankCounts[i] > 0){
-                //增加一个单牌move
-            }
-        }
-        //对牌
-        for (int i = 0; i <= kPokerJOKER_RANK; i++){
-            if (rankCounts[i] > 1){
-                //增加一个对牌move
-            }
-        }
-        //三不带
-        for (int i = 0; i <= kPokerJOKER_RANK; i++){
-            if (rankCounts[i] > 2){
-                //增加一个三不带move
-            }
-        }
+void dispCardRanks(RankCardsArray &cardRanks);
 
-        //炸弹
-        for (int i = 0; i <= kPokerJOKER_RANK; i++){
-            if (rankCounts[i] > 3){
-                //增加一个炸弹move
-            }
-        }
+std::vector<RankMove> parse(RankCountsArray rankCounts);
+} // namespace landlord_learning_env
 
-        for (int i = 0; i <= kPokerJOKER_RANK; i++){
-            if (rankCounts[i] > 0){
-                //增加一个单张move
-
-                //特殊处理王炸
-                if (i == kPokerJOKER_RANK && rankCounts[i-1] > 0){
-                    //有王炸
-                }
-            }else  if (rankCounts[i] > 1){
-                //增加一个对子move
-            }else if (rankCounts[i] > 2){
-                //增加一个三张move
-            }else if (rankCounts[i] > 3){
-                //增加一个炸弹move
-            }
-        }
-
-        //查找连续顺子牌
-        std::vector<std::pair<int,int>> continueRanks1 = buildContinueRanks(rankCounts,5,1);
-        
-        //查找连续对子牌
-        std::vector<std::pair<int,int>> continueRanks2 = buildContinueRanks(rankCounts,3,2);
-        
-        //查找连续三张牌
-        std::vector<std::pair<int,int>> continueRanks3 = buildContinueRanks(rankCounts,2,3);
-
-        //然后处理带牌情况，3带，3顺带，4带，
-    }
-
-    
-}// namespace landlord_learning_env
-
-#endif  //__LANDLORD_PARSER_H__
+#endif //__LANDLORD_PARSER_H__

@@ -28,7 +28,7 @@ void LandlordMove::chkValid(){
   }
 
 }
-LandlordMove::LandlordMove(Type move_type, 
+LandlordMove::LandlordMove(LandlordMoveType move_type, 
     std::vector <Poker>  pokers,int8_t laizi_rank = -1,int8_t tian_laizi_rank = -1)
       : move_type_(move_type),
         pokers_(pokers), laizi_rank_(laizi_rank),tian_laizi_rank_(tian_laizi_rank){
@@ -49,17 +49,6 @@ bool LandlordMove::operator==(const LandlordMove& other_move) const {
     return false;
   }
   switch (MoveType()) {
-    case kPlay:
-    case kDiscard:
-      return CardIndex() == other_move.CardIndex();
-    case kRevealColor:
-      return TargetOffset() == other_move.TargetOffset() &&
-             Color() == other_move.Color();
-    case kRevealRank:
-      return TargetOffset() == other_move.TargetOffset() &&
-             Rank() == other_move.Rank();
-    case kDeal:
-      return Color() == other_move.Color() && Rank() == other_move.Rank();
     default:
       return true;
   }

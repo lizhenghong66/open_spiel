@@ -30,11 +30,13 @@ void LandlordHand::AddCards(std::vector<LandlordCard> cards){
 
 void LandlordHand::RemoveFromHand(LandlordCard card,
                                 std::vector<LandlordCard>* discard_pile) {
-  if (discard_pile != nullptr) {
-    discard_pile->push_back(card);
-  }
   std::vector<LandlordCard>::iterator result = find(cards_.begin(),cards_.end(),card);
-  cards_.erase(result);
+  if (result != cards_.end()){
+    if (discard_pile != nullptr) {
+      discard_pile->push_back(card);
+    }
+    cards_.erase(result);
+  }
 }
 
 std::string LandlordHand::ToString() const {

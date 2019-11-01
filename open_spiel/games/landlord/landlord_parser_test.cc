@@ -16,7 +16,7 @@ namespace landlord_learning_env {
         {1,2},{2,2},{3,2},{0,3},{1,3},{3,4},{2,4},{1,5},{2,6},{0,8},{1,8},{2,8},{3,8}};
         std::vector<LandlordCard> hands = toCards(pokers);
         assert(hands.size() == 17);
-        std::array<RankType,RANK_COUNTS> rankCounts = buildRankCounts(hands);
+        std::array<RankType,RANK_COUNTS> rankCounts = buildRankCounts(hands).first;
         std::array<RankType,RANK_COUNTS> expectedRankCounts ={1,3,3,2,2,1,1,0,4,0,0,0,0,0,0,0};
         assert(rankCounts == expectedRankCounts);
         std::cout << "tesk1 buildRankCounts  ok!" << std::endl;
@@ -41,7 +41,7 @@ namespace landlord_learning_env {
         {1,6},{2,6},{3,6},{0,7},{1,7},{3,8},{2,8},{1,9},{3,9},{3,10},{2,10},
         {0,10},{0,11},{1,11},{2,11},{3,11}};;
         assert(hands.size() == 20);
-        std::array<RankType,RANK_COUNTS> rankCounts = buildRankCounts(hands);
+        std::array<RankType,RANK_COUNTS> rankCounts = buildRankCounts(hands).first;
         std::array<RankType,RANK_COUNTS> expectedRankCounts =
             {0,0,0,0,1,3,3,2,2,2,3,4};
         assert(rankCounts == expectedRankCounts);
@@ -63,9 +63,50 @@ namespace landlord_learning_env {
         std::cout << "tesk2  ok!" << std::endl;
     }
 
+    void parser_test3(){
+        std::vector<LandlordCard> hands = {{0,4},{0,5},{1,5},{2,5},
+        {1,6},{2,6},{3,6},{0,7},{1,7},{3,8},{2,8},{1,9},{3,9},{3,10},{2,10},
+        {0,10},{0,11},{1,11},{2,11},{3,11}};;
+        assert(hands.size() == 20);
+        RankCountAndCardArray rankCountsArray = buildRankCounts(hands);
+        RankCardsArray cardsArray = rankCountsArray.second;
+        RankCountsArray rankCounts  = rankCountsArray.first;
+
+        std::array<RankType,RANK_COUNTS> expectedRankCounts =
+            {0,0,0,0,1,3,3,2,2,2,3,4};
+        assert(rankCounts == expectedRankCounts);
+        dispCardRanks(cardsArray);
+        RankCardsArray expectedCardsArray;
+         expectedCardsArray[4]= {{0,4}};
+         expectedCardsArray[5]= {{0,5},{1,5},{2,5}};
+         expectedCardsArray[6]= {{1,6},{2,6},{3,6}};
+         expectedCardsArray[7]= {{0,7},{1,7}};
+         expectedCardsArray[8]= {{3,8},{2,8}};
+         expectedCardsArray[9]= {{1,9},{3,9}};
+         expectedCardsArray[10]= {{3,10},{2,10},{0,10}};
+         expectedCardsArray[11]= {{0,11},{1,11},{2,11},{3,11}};
+         
+         /*{{{}},{{}},{{}},{{}},{{0,4}}
+        ,{{0,5},{1,5},{2,5}},{{1,6},{2,6},{3,6}},{{0,7},{1,7}},{{3,8},{2,8}}
+        ,{{1,9},{3,9}},{{3,10},{2,10},{0,10}},{{0,11},{1,11},{2,11},{3,11}}};
+        */
+        assert(cardsArray == expectedCardsArray);
+        std::cout << "tesk3  rankCounts ok!" << std::endl;
+
+        std::vector<RankMove> allMoves = parse(rankCounts);
+        int count = 0;
+        for (auto move : allMoves){
+            std::cout << move.toString() << std::endl;
+        }
+        std::cout << "allMoves size:" << allMoves.size() << std::endl;
+        assert( allMoves.size() == 206);
+        std::cout << "tesk3  ok!" << std::endl;
+    }
+
 }//namespace landlord_learning_env
 
 int main(int argc, char** argv) {
    landlord_learning_env::parser_test1();
    landlord_learning_env::parser_test2();
+   landlord_learning_env::parser_test3();
 }

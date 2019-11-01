@@ -105,11 +105,11 @@ inline std::string cards2String(std::vector<LandlordCard> cards){
 
 inline std::string pokers2String(std::vector<Poker> pokers){
   std::string result;
-  for (int i = 0; i < pokers.size()-1; ++i) {
-    result += poker2String( pokers[i]) + " ";
-  }
-  if (pokers.size() -1 >= 0){
-      result += poker2String( pokers[pokers.size() -1]);
+  if (pokers.size() > 0){
+    for (int i = 0; i < pokers.size()-1; ++i) {
+      result += poker2String( pokers[i]) + " ";
+    }      
+    result += poker2String( pokers[pokers.size() -1]);
   }
   return result;
 }

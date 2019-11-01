@@ -37,16 +37,12 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <map>
 
 #include "landlord_card.h"
 
 namespace landlord_learning_env {
-
-// 斗地主出牌方式比较复杂，每种出牌方式的数量也不一样:
-class LandlordMove {
-  // LandlordMove is small, and intended to be passed by value.
- public:
-  enum Type { 
+  enum  LandlordMoveType { 
       kPass = 0,                      //过
       kSingle = 1,                  //单 
       kPair = 2,                       //对
@@ -71,17 +67,23 @@ class LandlordMove {
       kInvalid,    //无效
 };
 
-  LandlordMove(Type move_type, std::vector <Poker>  pokers,int8_t laizi_rank = -1,int8_t tian_laizi_rank = -1);
+constexpr int MOVE_COUNTS = 21;
+
+// 斗地主出牌方式比较复杂，每种出牌方式的数量也不一样:
+class LandlordMove {
+  // LandlordMove is small, and intended to be passed by value.
+ public:
+  LandlordMove(LandlordMoveType move_type, std::vector <Poker>  pokers,int8_t laizi_rank = -1,int8_t tian_laizi_rank = -1);
   // Tests whether two moves are functionally equivalent.
   bool operator==(const LandlordMove& other_move) const;
   std::string ToString() const;
 
-  Type MoveType() const { return move_type_; }
+  LandlordMoveType MoveType() const { return move_type_; }
   bool IsValid() const { return move_type_ != kInvalid; }
 
  private:
   void chkValid();
-  Type move_type_ = kInvalid;
+  LandlordMoveType move_type_ = kInvalid;
   int8_t rank_ = -1; //每种出牌的等级值，顺子取最大值
   int8_t size_ = -1;   //主要记录顺子或天地癞子炸弹时牌数量
   int8_t laizi_rank_ = -1; // 癞子牌或天地癞子时的地癞牌的等级值。
