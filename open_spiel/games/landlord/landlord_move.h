@@ -73,7 +73,9 @@ constexpr int MOVE_COUNTS = 21;
 class LandlordMove {
   // LandlordMove is small, and intended to be passed by value.
  public:
-  LandlordMove(LandlordMoveType move_type, std::vector <Poker>  pokers,int8_t laizi_rank = -1,int8_t tian_laizi_rank = -1);
+  LandlordMove(LandlordMoveType move_type,
+     std::vector <Poker>  pokers,int8_t laizi_rank,
+     int8_t tian_laizi_rank );
   // Tests whether two moves are functionally equivalent.
   bool operator==(const LandlordMove& other_move) const;
   std::string ToString() const;
@@ -100,6 +102,46 @@ class LandlordMove {
   int added_tian_laizi_count; //天癞牌数量
 };
 
+class RankMove
+{
+public:
+    RankMove(LandlordMoveType move_type, RankType startRank,
+             RankType endRank = -1, std::vector<Poker> addedRanks = {}) : type_(move_type), startRank_(startRank), endRank_(endRank),
+                                                                          addedRanks_(addedRanks){};
+    bool operator==(const RankMove &other_move) const
+    {
+        return (type_ == other_move.Type() &&
+                startRank_ == other_move.StartRank() &&
+                endRank_ == other_move.EndRank() &&
+                addedRanks_ == other_move.AddedRanks());
+    };
+    LandlordMoveType Type() const { return type_; }
+    RankType StartRank() const { return startRank_; }
+    RankType EndRank() const { return endRank_; }
+    std::vector<RankType> AddedRanks() const { return addedRanks_; }
+    bool ChangeType(LandlordMoveType newType, std::vector<RankType> addedRanks)
+    {
+        //[TODO]以后考虑增加合法性校验
+        LandlordMoveType type_ = newType;
+        addedRanks_ = addedRanks;
+        return true;
+    }
+
+    std::string toString() const;
+
+private:
+    LandlordMoveType type_;
+    RankType startRank_;
+    RankType endRank_;                 //非连牌时与startRank相同或忽略（没设置）
+    std::vector<RankType> addedRanks_; //带牌时带牌的rank列表。
+};
+
+// Action encoding (OpenSpiel游戏操作都是整数Ation):
+// bits 0-5: from square (0-64)
+// bits 6-11: to square (0-64)
+// bits 12-14: promotion type (0 if not promotion)
+//
+//Action move2Action(RankMove);
 }  // namespace landlord_learning_env
 
 #endif

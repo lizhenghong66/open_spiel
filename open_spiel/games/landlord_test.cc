@@ -24,7 +24,9 @@ namespace testing = open_spiel::testing;
 void BasicLandlordTests() {
   testing::LoadGameTest("landlord");
   testing::NoChanceOutcomesTest(*LoadGame("landlord"));
-  testing::RandomSimTest(*LoadGame("landlord"), 1);
+  //testing::RandomSimTest(*LoadGame("landlord"), 100);
+  testing::RandomSimTestNoSerialize(*LoadGame("landlord"), 100);
+  
   // for (int players = 3; players <= 5; players++) {
   //   testing::RandomSimTest(
   //       *LoadGame("landlord", {{"players", GameParameter(players)}}), 100);

@@ -120,9 +120,9 @@ std::vector<Action> OpenSpielLandlordState::LegalActions() const {
       return {};
     }else{
       std::vector<Action>  bidActions = {kPass};
-      Action lastAction = kPass;
+      Action lastAction = lastMaxBidedAction_ < kPass? kPass:lastMaxBidedAction_;
 
-      for (Action action = lastMaxBidedAction_ +1; action <= kThree; action++){
+      for (Action action = lastAction +1; action <= kThree; action++){
           bidActions.push_back(action);
       }
       return bidActions; //叫牌动作。
@@ -139,7 +139,16 @@ std::vector<std::pair<Action, double>> OpenSpielLandlordState::ChanceOutcomes()
 
 std::string OpenSpielLandlordState::ActionToString(Player player,
                                                  Action action_id) const {
- return "";
+  std::string strAction="";
+  if (!dealt_){
+    strAction="Deal";
+  }else if (!bided_){
+    strAction=std::to_string(player) + " call " + std::to_string(action_id);
+  }else{
+
+  }
+  
+ return strAction;
 }
 
 std::vector<double> OpenSpielLandlordState::Rewards() const {
@@ -163,6 +172,23 @@ void OpenSpielLandlordState::DoApplyAction(Action action) {
       }
       if (history_.size() >= landlord::NumPlayers && lastMaxBidedAction_ > kPass){
         bided_ = true;
+        //叫牌结束，
+        //将地主牌发出
+        originHands_[lastMaxBidedPlayer_].insert(originHands_[lastMaxBidedPlayer_].end(),
+          landLordPokers_.begin(),landLordPokers_.end());
+        //地主默认都是0，便于后面机器学习时统一处理。因此需要进行手牌交换
+        if (lastMaxBidedPlayer_ == 1){          
+          std::swap(originHands_[lastMaxBidedPlayer_],originHands_[0]);
+          std::swap(originHands_[lastMaxBidedPlayer_],originHands_[2]);
+        }else if (lastMaxBidedPlayer_ == 2){
+          std::swap(originHands_[lastMaxBidedPlayer_],originHands_[0]);
+          std::swap(originHands_[lastMaxBidedPlayer_],originHands_[1]);
+        }
+
+        //此时再解析手牌直方图
+        for (Player player = 0; player < num_players_;player++){
+          hands_[player] = buildRankCounts(originHands_[player]);
+        }
       }
     }
   }else{
@@ -171,6 +197,7 @@ void OpenSpielLandlordState::DoApplyAction(Action action) {
     for (Player player = 0; player < num_players_;player++){
       originHands_[player] = deck_.Deal(player *17,(player+1)*17);
     }
+    landLordPokers_ = deck_.Deal(51,deck_.NumCards());
     dealt_ = true;
   }
 }
@@ -189,18 +216,35 @@ std::unique_ptr<State> OpenSpielLandlordState::Clone() const {
   return std::unique_ptr<State>(new OpenSpielLandlordState(*this));
 }
 
-std::string OpenSpielLandlordState::ToString() const { return ""; }
+std::string OpenSpielLandlordState::ToString() const {
+  std::string strState = "dealt_:" + 
+    std::to_string(dealt_)  + ",bided:" + 
+    std::to_string(bided_) + ",history_.size:" +
+    std::to_string(history_.size()) + ",lastMaxBidedAction_:" +
+    std::to_string(lastMaxBidedAction_)+ ",lastMaxBidedPlayer_:" +
+    std::to_string(lastMaxBidedPlayer_) + "\n";
+    for (Player player = 0; player < landlord::NumPlayers;player++){
+      strState +="player " + std::to_string(player) + ":" +  
+        cards2String(pokers2Cards(originHands_[player])) +"\n";
+      strState +=  
+        rankCountsArray2String(hands_[player].first) +"\n";
+  }
+  return strState; 
+}
 
 bool OpenSpielLandlordState::IsTerminal() const { 
   return dealt_ && (
-    !bided_ && history_.size() >= 3  //已经叫牌一圈都没人叫分，重新开始游戏
+    !bided_ && history_.size() >= 4  //已经叫牌一圈都没人叫分，重新开始游戏
+    || bided_ && lastMaxBidedAction_ > kPass  //有人叫牌
     );
  }
 
 OpenSpielLandlordState::OpenSpielLandlordState(std::shared_ptr<const Game> game)
     : State(game),
       game_(static_cast<const OpenSpielLandlordGame*>(game.get())),
-      prev_state_score_(0.) {}
+      prev_state_score_(0.),
+      rng_(game_->rand_seed()){
+      }
 
 }  // namespace landlord
 }  // namespace open_spiel

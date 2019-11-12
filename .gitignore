@@ -30,3 +30,9 @@ get-pip.py
 
 # IDE
 .idea/
+open_spiel/games/landlord/landlord_deck_test
+open_spiel/games/landlord/util_test
+open_spiel/games/landlord/landlord_parser_test
+.vscode/launch.json
+.vscode/settings.json
+.vscode/tasks.json

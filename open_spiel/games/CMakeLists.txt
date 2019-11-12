@@ -40,6 +40,20 @@ add_library (games OBJECT
   hex.h
   kuhn_poker.cc
   kuhn_poker.h
+  landlord.cc
+  landlord.h
+  #landlord/landlord_card.cc
+  landlord/landlord_card.h
+  landlord/landlord_deck.cc
+  landlord/landlord_deck.h
+  landlord/landlord_hand.cc
+  landlord/landlord_hand.h
+  landlord/landlord_move.cc
+  landlord/landlord_move.h
+  landlord/landlord_parser.cc
+  landlord/landlord_parser.h
+  landlord/util.cc
+  landlord/util.h
   laser_tag.cc
   laser_tag.h
   leduc_poker.cc
@@ -210,6 +224,11 @@ add_executable(kuhn_poker_test kuhn_poker_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>
                $<TARGET_OBJECTS:algorithms>)
 add_test(kuhn_poker_test kuhn_poker_test)
+
+add_executable(landlord_test landlord_test.cc ${OPEN_SPIEL_OBJECTS}
+               $<TARGET_OBJECTS:tests>
+               $<TARGET_OBJECTS:algorithms>)
+add_test(landlord_test landlord_test)
 
 add_executable(leduc_poker_test leduc_poker_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>

@@ -16,47 +16,6 @@
 #include "util.h"
 namespace landlord_learning_env
 {
-extern std::map<LandlordMoveType,std::string> MoveTypeStringMap;
-
-class RankMove
-{
-public:
-    RankMove(LandlordMoveType move_type, RankType startRank,
-             RankType endRank = -1, std::vector<Poker> addedRanks = {}) : type_(move_type), startRank_(startRank), endRank_(endRank),
-                                                                          addedRanks_(addedRanks){};
-    bool operator==(const RankMove &other_move) const
-    {
-        return (type_ == other_move.Type() &&
-                startRank_ == other_move.StartRank() &&
-                endRank_ == other_move.EndRank() &&
-                addedRanks_ == other_move.AddedRanks());
-    };
-    LandlordMoveType Type() const { return type_; }
-    RankType StartRank() const { return startRank_; }
-    RankType EndRank() const { return endRank_; }
-    std::vector<RankType> AddedRanks() const { return addedRanks_; }
-    bool ChangeType(LandlordMoveType newType, std::vector<RankType> addedRanks)
-    {
-        //[TODO]以后考虑增加合法性校验
-        LandlordMoveType type_ = newType;
-        addedRanks_ = addedRanks;
-        return true;
-    }
-
-    std::string toString() const{
-        std::string str = "";
-        //str =  std::to_string(type_)  +  ":"  +  std::to_string(startRank_) +  
-        str =  MoveTypeStringMap[type_] +"(" + std::to_string(type_)  +  "):"  +  std::to_string(startRank_) +  
-            " --> " + std::to_string(endRank_)  + ","  +  pokers2String(addedRanks_);
-        return str;
-    }
-
-private:
-    LandlordMoveType type_;
-    RankType startRank_;
-    RankType endRank_;                 //非连牌时与startRank相同或忽略（没设置）
-    std::vector<RankType> addedRanks_; //带牌时带牌的rank列表。
-};
 using RankCountsArray = std::array<RankType, RANK_COUNTS>;
 using RankCardsArray = std::array<std::vector<LandlordCard>, RANK_COUNTS>;
 using RankCountAndCardArray = std::pair<RankCountsArray,RankCardsArray>;
@@ -82,7 +41,8 @@ std::vector<std::pair<int, int>> buildContinueRanks(
 
 void dispCardRanks(RankCardsArray &cardRanks);
 
-std::vector<RankMove> parse(RankCountsArray rankCounts);
+std::vector<RankMove> parse(RankCountsArray &rankCounts);
+std::string rankCountsArray2String(RankCountsArray &countsArray);
 } // namespace landlord_learning_env
 
 #endif //__LANDLORD_PARSER_H__

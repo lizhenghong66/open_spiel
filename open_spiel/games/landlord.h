@@ -53,6 +53,7 @@
 #include "open_spiel/games/landlord/landlord_deck.h"
 #include "open_spiel/games/landlord/landlord_parser.h"
 
+using  namespace landlord_learning_env;
 namespace open_spiel {
 namespace landlord {
 //参考chess.h定义了一些常量和action的编码
@@ -81,6 +82,13 @@ class OpenSpielLandlordGame : public Game {
 
   // const landlord_learning_env::LandlordGame& LandlordGame() const { return game_; }
 
+  bool isAllowAddPair() const{
+    return isAllowAddPair_;
+  }
+
+  int rand_seed() const {
+    return rd_(); 
+  }
  private:
     bool isAllowAddPair_;  // 是否允许带对牌
     bool isAllowContinuableBomb_; //是否允许连炸
@@ -88,6 +96,9 @@ class OpenSpielLandlordGame : public Game {
     bool isUsedWildCard_; // 是否使用花牌（整副牌55张了）
     bool isUseLaizi_; //是否使用癞子牌，随机选择一种牌为癞子，2（王做癞子)或4张（其他牌）
     bool isUseTiandiLaizi_; //是否使用天地癞子（更多癞子，6或8个癞子）。
+
+    //int rng_seed_;
+   mutable  std::random_device rd_;
 };
 
 class OpenSpielLandlordState : public State {
@@ -124,17 +135,17 @@ class OpenSpielLandlordState : public State {
   Player cur_player_;
   
   mutable std::mt19937 rng_;
-  mutable landlord_learning_env::Deck deck_;  //主要用户洗牌和发牌。
-  mutable bool dealt_;  //标识是否已经发牌结束。
-  mutable bool bided_;  //叫分成功否
+  mutable Deck deck_;  //主要用户洗牌和发牌。
+  mutable bool dealt_ = false;  //标识是否已经发牌结束。
+  mutable bool bided_ = false;  //叫分成功否
   
-  Action lastMaxBidedAction_;
-  Player lastMaxBidedPlayer_;
+  Action lastMaxBidedAction_ = kInvalidAction;
+  Player lastMaxBidedPlayer_ = kInvalidPlayer;
 
   //发牌后手牌的原始牌，以及解析后的直方图（记录每个rank牌的数量，以及每个rank各自的牌）。
-  std::array<std::vector<landlord_learning_env::Poker>,landlord::NumPlayers> originHands_;
-  std::array<landlord_learning_env::RankCountAndCardArray,landlord::NumPlayers> hands_;
-
+  std::array<std::vector<Poker>,landlord::NumPlayers> originHands_;
+  mutable std::array<RankCountAndCardArray,landlord::NumPlayers> hands_;
+  std::vector<Poker> landLordPokers_;  //发牌后留给地主的牌。
 };
 
 }  // namespace landlord

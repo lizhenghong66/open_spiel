@@ -2,31 +2,6 @@
 
 namespace landlord_learning_env
 {
-    std::map<LandlordMoveType,std::string> MoveTypeStringMap = {
-      {kPass,"kPass"},                      //过
-      {kSingle , "kSingle"},                  //单 
-      {kPair,"kPair"},                       //对
-      {kThree,"kThree"},                   //三不带 （有些地方中途不允许，只能最后一手）
-      {kThreeAddSingle,"kThreeAddSingle"},                               //三带一
-      {kThreeAddPair,"kThreeAddPair"},                                //三带对
-      {kFourAddTwoSingles,"kFourAddTwoSingles"},                   //四带两单牌
-      {kFourAddTwoPairs,"kFourAddTwoPairs"},                       //四带两对牌
-      {kStraight,"kStraight"},                                           //顺子 
-      {kTwoStraight,"kTwoStraight"},                                 //拖拉机，连对
-      {kThreeStraight,"kThreeStraight"},                             //飞机，没翅膀，3连牌
-      {kThreeStraightAddOne,"kThreeStraightAddOne"},             // 飞机带单翅膀
-      {kThreeStraightAddPair,"kThreeStraightAddPair"},           // 飞机带双翅膀
-
-      {kBomb,"kBomb"},           // 炸弹，包括癞子炸弹，需要结合牌值编码比较大小。
-      {kKingBomb,"kKingBomb"},           // 王炸，双王，多数玩法都是最大牌了。
-      {kWeightBomb,"kWeightBomb"},           // 重炸，炸弹+花牌，允许花牌时最大牌了。
-      {kKingWeightBomb,"kKingWeightBomb"},           // 重炸，双王+花牌，允许花牌时都是最大牌了。
-      {kContinueBomb,"kContinueBomb"},           // 连炸（航天飞机）。允许连炸时最大牌。航天飞机
-      {kContinueBombAddOne,"kContinueBombAddOne"},           // 航天飞机带单。允许连炸时最大牌。航天飞机
-      {kContinueBombAddPair,"kContinueBombAddPair"},           // 航天飞机带对。允许连炸时最大牌。航天飞机
-      {kInvalid,"kInvalid"},    //无效
-};
-
 /**
      *解析出连牌后，看看是否还可以拆分成更小的连牌。 
      参数：
@@ -173,7 +148,7 @@ void updatedAddPokers(LandlordMoveType type, int start, int end, int len,
     }
 }
 
-std::vector<RankMove> parse(RankCountsArray rankCounts)
+std::vector<RankMove> parse(RankCountsArray &rankCounts)
 {
     //std::set<std::array<std::vector<RankMove>,MAX_RANK>> allLegalActions;
     std::array<std::vector<RankMove>, MOVE_COUNTS> allLegalActions;
@@ -307,4 +282,12 @@ void dispCardRanks(RankCardsArray &cardRanks){
     }
 }
 
+std::string rankCountsArray2String(RankCountsArray &countsArray){
+    std::string  strCounts = "";
+    for (int i = 0; i < RANK_COUNTS-1; i++){
+        strCounts  += std::to_string(countsArray[i]) + " ";
+    }
+     strCounts  += std::to_string(countsArray[RANK_COUNTS-1]);
+    return strCounts;
+}
 } // namespace landlord_learning_env
