@@ -144,8 +144,10 @@ std::vector<Action> OpenSpielLandlordState::LegalActions() const
       LandlordMoveType  last2 = decodeActionType4(lastAction2);
       
       std::vector<RankMove> moves;
-      if (last1 == LandlordMoveType::kPass && last2 == LandlordMoveType::kPass){
+      if (history_.size() <= 4 || last1 == LandlordMoveType::kPass && last2 == LandlordMoveType::kPass){
         //自己出牌后，其他两家没有出牌（地主第一次出牌因为叫牌action解析后的moveType也时kPass。
+        //地主出牌时，因为前面发牌和叫牌，history里面已经有4个action。
+        //为了避免编码变化的影响，使用历史命令长度来区分（这个需要根据叫牌策略可能有所改变）是否时地主首次出牌。
         moves = parse(hands_[CurrentPlayer()].first);
       }else{
         //RankMove otherMove = last1 == LandlordMoveType::kPass?action2RankMove(lastAction2):action2RankMove(lastAction1);
@@ -201,14 +203,28 @@ std::string OpenSpielLandlordState::ActionToString(Player player,
   return strAction;
 }
 
-std::vector<double> OpenSpielLandlordState::Rewards() const
-{
-  return std::vector<double>(NumPlayers(), 0);
-}
-
 std::vector<double> OpenSpielLandlordState::Returns() const
 {
-  return std::vector<double>(NumPlayers(), 0);
+  std::vector<double> returns = {0,0,0};
+  if (!IsTerminal()) return returns;
+  int times = 0; //2**0 ,基础倍数。
+  if (playerValidActions_[0] == 1){
+    //地主只出了1手牌，反春
+    times++;
+  }else if(playerValidActions_[1] ==0 && playerValidActions_[1] ==0){
+      //其他两家都没出牌，春天。
+      times++;
+  }
+  times += bombCounts_;
+  times = std::pow(2,times);
+
+  double base = lastMaxBidedAction_;
+  if (winPlayer_ == 0){
+    returns = {2*base * times,-base * times,-base*times};
+  }else{
+    returns = {-2*base * times,base * times,base*times};
+  }
+  return returns;
 }
 
 void OpenSpielLandlordState::DoApplyAction(Action action)
@@ -240,6 +256,10 @@ void OpenSpielLandlordState::DoApplyAction(Action action)
       if (move.Type() != LandlordMoveType::kPass && move.Type() != kInvalid){
         RankCountsArray countsArray = rankMove2Counts(move);
         Player cur_player = CurrentPlayer();
+        playerValidActions_[cur_player]++;   //当前玩家的有效操作增加。
+        if (move.Type() == kBomb || move.Type() == kKingBomb){
+          bombCounts_++;   //炸弹数量增加1个。
+        }
         std::cout << "player " << std::to_string(cur_player) << " put " << rankCountsArray2String(countsArray) <<  std::endl;
         for (RankType rank = 0; rank < RANK_COUNTS; rank++){
           if (countsArray[rank] > 0){
@@ -330,7 +350,12 @@ std::string OpenSpielLandlordState::ToString() const
                          std::to_string(bided_) + ",history_.size:" +
                          std::to_string(history_.size()) + ",lastMaxBidedAction_:" +
                          std::to_string(lastMaxBidedAction_) + ",lastMaxBidedPlayer_:" +
-                         std::to_string(lastMaxBidedPlayer_) + "\n";
+                         std::to_string(lastMaxBidedPlayer_) + ",winPlayer:" +
+                         std::to_string(winPlayer_) + ",bombCounts:" +
+                         std::to_string(bombCounts_) + ",playerValidActions:[" +
+                         std::to_string(playerValidActions_[0]) + " " 
+                         + std::to_string(playerValidActions_[1]) + " " 
+                         + std::to_string(playerValidActions_[2]) + "]\n";
   for (Player player = 0; player < landlord::NumPlayers; player++)
   {
     strState += "player " + std::to_string(player) + ":" +
@@ -350,12 +375,17 @@ bool OpenSpielLandlordState::IsTerminal() const
       ret = true;
     }else if(bided_ && lastMaxBidedAction_ > kPass) //有人叫牌'
     {
+      if (winPlayer_ != kInvalidPlayer){
+        ret = true;
+      }else{
         for(Player player = 0; player < landlord::NumPlayers; player++){
           if (getPokersCounts(hands_[player].first) == 0){//有人牌打完了。
             ret = true;
+            winPlayer_ = player;
             break;
           }
         }
+      }
     }
   }
   return ret;

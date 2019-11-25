@@ -167,7 +167,6 @@ class OpenSpielLandlordState : public State {
   std::vector<Action> LegalActions() const override;
   std::vector<std::pair<Action, double>> ChanceOutcomes() const override;
   std::string ActionToString(Player player, Action action_id) const override;
-  std::vector<double> Rewards() const override;
   std::vector<double> Returns() const override;
 
   // We support observations only, not information states. The information
@@ -205,6 +204,10 @@ class OpenSpielLandlordState : public State {
   std::array<std::vector<Poker>,landlord::NumPlayers> originHands_;
   mutable std::array<RankCountAndCardArray,landlord::NumPlayers> hands_;
   std::vector<Poker> landLordPokers_;  //发牌后留给地主的牌。
+
+  int bombCounts_ =0; //已经打出的炸弹数量，用来计算最终输赢时的倍数。
+  mutable int winPlayer_ = kInvalidPlayer;
+  std::array<int,landlord::NumPlayers> playerValidActions_={0}; //玩家的有效操作数统计，便于计算春天或反春。
 };
 
 }  // namespace landlord
