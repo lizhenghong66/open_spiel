@@ -103,10 +103,40 @@ namespace landlord_learning_env {
         std::cout << "tesk3  ok!" << std::endl;
     }
 
+    void chkMoveEncode(RankMove move){
+        RankCountsArray counts = rankMove2Counts(move);
+        RankMove decodedMove = buildMoveByPokersCounts(counts);
+        assert (move == decodedMove);
+    }
+    void parser_test4(){
+        chkMoveEncode(RankMove(kSingle,12));
+        chkMoveEncode(RankMove(kSingle,kPokerA_RANK));
+        chkMoveEncode(RankMove(kPair,kPokerA_RANK));
+        chkMoveEncode(RankMove(kThree,kPokerA_RANK));
+        chkMoveEncode(RankMove(kBomb,kPokerA_RANK));
+        chkMoveEncode(RankMove(kKingBomb,kPokerJoker_RANK,kPokerJOKER_RANK));
+
+        chkMoveEncode(RankMove(kStraight,kPoker3_RANK,kPokerA_RANK));
+        chkMoveEncode(RankMove(kTwoStraight,kPoker3_RANK,4));
+        chkMoveEncode(RankMove(kThreeStraight,kPoker3_RANK,3));
+
+        chkMoveEncode(RankMove(kThreeAddSingle,kPoker3_RANK,kPoker3_RANK,{4}));
+        chkMoveEncode(RankMove(kThreeAddPair,kPoker3_RANK,kPoker3_RANK,{4}));
+
+        chkMoveEncode(RankMove(kFourAddTwoSingles,kPoker3_RANK,kPoker3_RANK,{4,8}));
+        chkMoveEncode(RankMove(kFourAddTwoPairs,kPoker3_RANK,kPoker3_RANK,{3,7}));
+
+        chkMoveEncode(RankMove(kThreeStraightAddOne,kPoker3_RANK,2,{4,7,9}));
+        chkMoveEncode(RankMove(kThreeStraightAddPair,kPoker3_RANK,2,{5,8,10}));
+
+        chkMoveEncode(RankMove(kThreeStraightAddOne,kPoker3_RANK,2,{0,7,9}));
+        std::cout << "action counts encode decoding success ..." << std::endl;
+    }
 }//namespace landlord_learning_env
 
 int main(int argc, char** argv) {
    landlord_learning_env::parser_test1();
    landlord_learning_env::parser_test2();
    landlord_learning_env::parser_test3();
+   landlord_learning_env::parser_test4();
 }

@@ -93,4 +93,7 @@ std::string LandlordMove::ToString() const {
   }
 }
 
+std::string moveType2String(LandlordMoveType type){
+  return MoveTypeStringMap[type];
+}
 }  // namespace landlord_learning_env

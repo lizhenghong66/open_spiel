@@ -19,7 +19,7 @@ namespace landlord_learning_env
 using RankCountsArray = std::array<RankType, RANK_COUNTS>;
 using RankCardsArray = std::array<std::vector<LandlordCard>, RANK_COUNTS>;
 using RankCountAndCardArray = std::pair<RankCountsArray,RankCardsArray>;
-
+using RankMoveByType = std::array<std::vector<RankMove>, MOVE_COUNTS>;
 /**
  * 根据手牌数组解析为两个数组（1个每个等级牌的数量，以及每个等级的相关牌列表）
  */
@@ -41,8 +41,13 @@ std::vector<std::pair<int, int>> buildContinueRanks(
 
 void dispCardRanks(RankCardsArray &cardRanks);
 
+RankMoveByType parseByType(RankCountsArray &rankCounts);
 std::vector<RankMove> parse(RankCountsArray &rankCounts);
+std::vector<RankMove> parse(RankCountsArray &rankCounts,RankMove otherMove);
 std::string rankCountsArray2String(RankCountsArray &countsArray);
+int getPokersCounts(RankCountsArray &countsArray);
+RankCountsArray rankMove2Counts(RankMove &move);
+RankMove buildMoveByPokersCounts(RankCountsArray &countsArray);
 } // namespace landlord_learning_env
 
 #endif //__LANDLORD_PARSER_H__

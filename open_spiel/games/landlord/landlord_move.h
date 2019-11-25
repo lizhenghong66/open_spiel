@@ -44,26 +44,26 @@
 namespace landlord_learning_env {
   enum  LandlordMoveType { 
       kPass = 0,                      //过
-      kSingle = 1,                  //单 
-      kPair = 2,                       //对
-      kThree = 3,                   //三不带 （有些地方中途不允许，只能最后一手）
-      kThreeAddSingle = 4,                               //三带一
-      kThreeAddPair = 5,                                //三带对
-      kFourAddTwoSingles = 6,                   //四带两单牌
-      kFourAddTwoPairs = 7,                       //四带两对牌
-      kStraight = 8,                                           //顺子 
-      kTwoStraight = 9,                                 //拖拉机，连对
-      kThreeStraight = 10,                             //飞机，没翅膀，3连牌
-      kThreeStraightAddOne = 11,             // 飞机带单翅膀
-      kThreeStraightAddPair = 12,           // 飞机带双翅膀
+      kSingle,                  //单 
+      kPair,                       //对
+      kThree,                   //三不带 （有些地方中途不允许，只能最后一手）
+      kThreeAddSingle,                               //三带一
+      kThreeAddPair,                                //三带对
+      kFourAddTwoSingles,                   //四带两单牌
+      kFourAddTwoPairs,                       //四带两对牌
+      kStraight,                                           //顺子 
+      kTwoStraight,                                 //拖拉机，连对
+      kThreeStraight,                             //飞机，没翅膀，3连牌
+      kThreeStraightAddOne,             // 飞机带单翅膀
+      kThreeStraightAddPair,           // 飞机带双翅膀
 
-      kBomb = 13,           // 炸弹，包括癞子炸弹，需要结合牌值编码比较大小。
-      kKingBomb = 14,           // 王炸，双王，多数玩法都是最大牌了。
-      kWeightBomb = 15,           // 重炸，炸弹+花牌，允许花牌时最大牌了。
-      kKingWeightBomb = 16,           // 重炸，双王+花牌，允许花牌时都是最大牌了。
-      kContinueBomb = 17,           // 连炸（航天飞机）。允许连炸时最大牌。航天飞机
-      kContinueBombAddOne = 18,           // 航天飞机带单。允许连炸时最大牌。航天飞机
-      kContinueBombAddPair = 19,           // 航天飞机带对。允许连炸时最大牌。航天飞机
+      kBomb,           // 炸弹，包括癞子炸弹，需要结合牌值编码比较大小。
+      kKingBomb,           // 王炸，双王，多数玩法都是最大牌了。
+      kWeightBomb,           // 重炸，炸弹+花牌，允许花牌时最大牌了。
+      kKingWeightBomb,           // 重炸，双王+花牌，允许花牌时都是最大牌了。
+      kContinueBomb,           // 连炸（航天飞机）。允许连炸时最大牌。航天飞机
+      kContinueBombAddOne,           // 航天飞机带单。允许连炸时最大牌。航天飞机
+      kContinueBombAddPair,           // 航天飞机带对。允许连炸时最大牌。航天飞机
       kInvalid,    //无效
 };
 
@@ -142,6 +142,8 @@ private:
 // bits 12-14: promotion type (0 if not promotion)
 //
 //Action move2Action(RankMove);
+std::string moveType2String(LandlordMoveType type);
+
 }  // namespace landlord_learning_env
 
 #endif
