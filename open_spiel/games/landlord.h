@@ -52,6 +52,7 @@
 #include "open_spiel/spiel.h"
 #include "open_spiel/games/landlord/landlord_deck.h"
 #include "open_spiel/games/landlord/landlord_parser.h"
+#include "open_spiel/games/landlord/landlord_action.h"
 
 using  namespace landlord_learning_env;
 namespace open_spiel {
@@ -63,6 +64,64 @@ constexpr int NumPlayers = 3;   //暂时只考虑3人斗地主
 constexpr int NumDistinctActions= (1 << 15); 
 
 enum BidAction{kPass,kOne,kTwo,kThree};
+//landlord action encode
+//0--47 bit,每3bit记录一个rank 扑克的数量（0--4）
+//48-52，5bit记录出牌类型（action Type）。
+constexpr int ACTION_FLAG_LOC = 48;
+constexpr Action ACTION_FLAG = 0x1F;
+constexpr int RANK_FLAG_LEN = 3;
+constexpr Action RANK_FLAG = 7;
+
+inline Action encodeActionType(LandlordMoveType type){
+    Action action = type;
+   action =  action <<  ACTION_FLAG_LOC;
+  return action;
+}
+
+inline Action encodeRankPoker(RankType rank,int count){
+  Action action = ((Action)count) << RANK_FLAG_LEN * rank;
+  return action;
+}
+
+inline LandlordMoveType decodeActionType(Action action){
+  LandlordMoveType type;
+  Action flag = ACTION_FLAG << ACTION_FLAG_LOC;
+  flag = action & flag;
+  flag = flag >> ACTION_FLAG_LOC;
+   type = (LandlordMoveType)flag;
+  return type;
+}
+
+inline int decodeRankPoker(RankType rank,Action action){
+  Action flag = RANK_FLAG << rank * RANK_FLAG_LEN;
+  flag = action & flag;
+  flag = flag >> rank * RANK_FLAG_LEN;
+
+  return flag;
+}
+
+inline Action encodeRankCounts(RankCountsArray &rankCounts){
+  Action action = 0;
+  for (int rank = 0; rank < RANK_COUNTS;rank++){
+    if (rankCounts[rank] > 0){
+      action |= encodeRankPoker(rank,rankCounts[rank]);
+    }
+  }
+  return action;
+}
+
+inline RankCountsArray decodeRankCounts( Action action){
+ RankCountsArray rankCounts = {0};
+  for (int rank = 0; rank < RANK_COUNTS;rank++){
+    rankCounts[rank] = decodeRankPoker(rank,action);
+  }
+  return rankCounts;
+}
+
+Action rankMove2Action(RankMove &move);
+RankMove action2RankMove(Action &action);
+std::vector<Action> rankMoves2Actions(std::vector<RankMove> &moves);
+
 class OpenSpielLandlordGame : public Game {
  public:
   explicit OpenSpielLandlordGame(const GameParameters& params);

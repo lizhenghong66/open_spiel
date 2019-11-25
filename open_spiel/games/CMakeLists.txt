@@ -52,6 +52,8 @@ add_library (games OBJECT
   landlord/landlord_move.h
   landlord/landlord_parser.cc
   landlord/landlord_parser.h
+  landlord/landlord_action.cc
+  landlord/landlord_action.h
   landlord/util.cc
   landlord/util.h
   laser_tag.cc

@@ -320,7 +320,7 @@ void RandomSimulation(std::mt19937* rng, const Game& game, bool undo,
 
       // Sample an action uniformly.
       std::vector<Action> actions = state->LegalActions();
-      LegalActionsMaskTest(game, *state, actions);
+      //LegalActionsMaskTest(game, *state, actions);
       if (state->IsTerminal())
         SPIEL_CHECK_TRUE(actions.empty());
       else
