@@ -320,7 +320,7 @@ void RandomSimulation(std::mt19937* rng, const Game& game, bool undo,
 
       // Sample an action uniformly.
       std::vector<Action> actions = state->LegalActions();
-      //LegalActionsMaskTest(game, *state, actions);
+      LegalActionsMaskTest(game, *state, actions);
       if (state->IsTerminal())
         SPIEL_CHECK_TRUE(actions.empty());
       else
@@ -398,7 +398,9 @@ void RandomSimTestWithUndo(const Game& game, int num_sims) {
 }
 
 void RandomSimTestNoSerialize(const Game& game, int num_sims) {
-  std::mt19937 rng;
+  //std::mt19937 rng;
+  std::random_device rd_;
+  std::mt19937 rng(rd_());
   std::cout << "RandomSimTestNoSerialize, game = " << game.GetType().short_name
             << ", num_sims = " << num_sims << std::endl;
   for (int sim = 0; sim < num_sims; ++sim) {

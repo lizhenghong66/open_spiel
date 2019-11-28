@@ -47,11 +47,12 @@
  */
 #ifndef __LANDLORD_ACTION_H__
 #define __LANDLORD_ACTION_H__
+
 #include "landlord_move.h"
 #include "landlord_parser.h"
 #include "util.h"
 
-#include  <iostream>
+#include <iostream>
 
 namespace landlord_learning_env
 {
@@ -217,13 +218,13 @@ inline RankMove action2Move4(int action)
         case kThreeStraightAddPair: // 飞机带双翅膀
             end = decode4(action, ACTION4_END_FLAG_LOC, RANK4_FLAG);
             len = end - start + 1;
-            move = decodeAdded(type,start,end,len,action);
+            move = decodeAdded(type, start, end, len, action);
             break;
         case kFourAddTwoSingles: //四带两单牌
         case kFourAddTwoPairs:   //四带两对牌
             end = decode4(action, ACTION4_END_FLAG_LOC, RANK4_FLAG);
             len = 2;
-            move = decodeAdded(type,start,end,len,action);
+            move = decodeAdded(type, start, end, len, action);
         default:
             break;
         }
@@ -231,27 +232,44 @@ inline RankMove action2Move4(int action)
     return move;
 }
 
-inline std::vector<std::array<int,16>> parseHandCombines(int counts){
-    std::vector<std::array<int,16>> handCombines;
-    int c1=5;
-    int c2=2;
-    for (int i1=0;i1<c1;i1++){
-        for (int i2=0;i2<c1;i2++){
-            for (int i3=0;i3<c1;i3++){
-                for (int i4=0;i4<c1;i4++){
-                    for (int i5=0;i5<c1;i5++){
-                        for (int i6=0;i6<c1;i6++){
-                            for (int i7=0;i7<c1;i7++){
-                                for (int i8=0;i8<c1;i8++){
-                                    for (int i9=0;i9<c1;i9++){
-                                        for (int i10=0;i10<c1;i10++){
-                                            for (int i11=0;i11<c1;i11++){
-                                                for (int i12=0;i12<c1;i12++){
-                                                    for (int i13=0;i13<c1;i13++){
-                                                        for (int i14=0;i14<c2;i14++){
-                                                            for (int i15=0;i15<c2;i15++){
-                                                                if (i1+i2+i3+i4+i5+i6+i7+i8+i9+i10+i11+i12+i13+i14 +i15 == counts){
-                                                                    handCombines.push_back({i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11,i12,i13,i14,i15,0});
+inline std::vector<std::array<int, 16>> parseHandCombines(int counts)
+{
+    std::vector<std::array<int, 16>> handCombines;
+    int c1 = 5;
+    int c2 = 2;
+    for (int i1 = 0; i1 < c1; i1++)
+    {
+        for (int i2 = 0; i2 < c1; i2++)
+        {
+            for (int i3 = 0; i3 < c1; i3++)
+            {
+                for (int i4 = 0; i4 < c1; i4++)
+                {
+                    for (int i5 = 0; i5 < c1; i5++)
+                    {
+                        for (int i6 = 0; i6 < c1; i6++)
+                        {
+                            for (int i7 = 0; i7 < c1; i7++)
+                            {
+                                for (int i8 = 0; i8 < c1; i8++)
+                                {
+                                    for (int i9 = 0; i9 < c1; i9++)
+                                    {
+                                        for (int i10 = 0; i10 < c1; i10++)
+                                        {
+                                            for (int i11 = 0; i11 < c1; i11++)
+                                            {
+                                                for (int i12 = 0; i12 < c1; i12++)
+                                                {
+                                                    for (int i13 = 0; i13 < c1; i13++)
+                                                    {
+                                                        for (int i14 = 0; i14 < c2; i14++)
+                                                        {
+                                                            for (int i15 = 0; i15 < c2; i15++)
+                                                            {
+                                                                if (i1 + i2 + i3 + i4 + i5 + i6 + i7 + i8 + i9 + i10 + i11 + i12 + i13 + i14 + i15 == counts)
+                                                                {
+                                                                    handCombines.push_back({i1, i2, i3, i4, i5, i6, i7, i8, i9, i10, i11, i12, i13, i14, i15, 0});
                                                                 }
                                                             }
                                                         }
@@ -265,7 +283,7 @@ inline std::vector<std::array<int,16>> parseHandCombines(int counts){
                         }
                     }
                 }
-             }
+            }
         }
     }
 
@@ -273,36 +291,56 @@ inline std::vector<std::array<int,16>> parseHandCombines(int counts){
 }
 
 inline u_int64_t parseHandCombinesCounts(
-            std::vector<std::array<int,16>> firstHandCombines,
-            int counts){
+    std::vector<std::array<int, 16>> firstHandCombines,
+    int counts)
+{
     u_int64_t handCombinesCounts = 0;
-    int c1=5;
-    int c2=2;
-    int sum=0;
-    for (int i = 0; i < firstHandCombines.size();i++){
-        std::cout << i << ",counts:"<< handCombinesCounts<< ",前一手玩家手牌rank：" << rankCountsArray2String(firstHandCombines[i]) << std::endl;
-        for (int i1=0;i1<c1-firstHandCombines[i][0];i1++){
-            for (int i2=0;i2<c1-firstHandCombines[i][1];i2++){
-                for (int i3=0;i3<c1-firstHandCombines[i][2];i3++){
-                    for (int i4=0;i4<c1-firstHandCombines[i][3];i4++){
-                        for (int i5=0;i5<c1-firstHandCombines[i][4];i5++){
-                            for (int i6=0;i6<c1-firstHandCombines[i][5];i6++){
-                                for (int i7=0;i7<c1-firstHandCombines[i][6];i7++){
-                                    for (int i8=0;i8<c1-firstHandCombines[i][7];i8++){
-                                        for (int i9=0;i9<c1-firstHandCombines[i][8];i9++){
-                                            for (int i10=0;i10<c1-firstHandCombines[i][9];i10++){
-                                                for (int i11=0;i11<c1-firstHandCombines[i][10];i11++){
-                                                    for (int i12=0;i12<c1-firstHandCombines[i][11];i12++){
-                                                        for (int i13=0;i13<c1-firstHandCombines[i][12];i13++){
-                                                            for (int i14=0;i14<c2-firstHandCombines[i][13];i14++){
-                                                                for (int i15=0;i15<c2-firstHandCombines[i][14];i15++){
-                                                                    if (i1+i2+i3+i4+i5+i6+i7+i8+i9+i10+i11+i12+i13+i14 +i15 == counts){
+    int c1 = 5;
+    int c2 = 2;
+    int sum = 0;
+    for (int i = 0; i < firstHandCombines.size(); i++)
+    {
+        std::cout << i << ",counts:" << handCombinesCounts << ",前一手玩家手牌rank：" << rankCountsArray2String(firstHandCombines[i]) << std::endl;
+        for (int i1 = 0; i1 < c1 - firstHandCombines[i][0]; i1++)
+        {
+            for (int i2 = 0; i2 < c1 - firstHandCombines[i][1]; i2++)
+            {
+                for (int i3 = 0; i3 < c1 - firstHandCombines[i][2]; i3++)
+                {
+                    for (int i4 = 0; i4 < c1 - firstHandCombines[i][3]; i4++)
+                    {
+                        for (int i5 = 0; i5 < c1 - firstHandCombines[i][4]; i5++)
+                        {
+                            for (int i6 = 0; i6 < c1 - firstHandCombines[i][5]; i6++)
+                            {
+                                for (int i7 = 0; i7 < c1 - firstHandCombines[i][6]; i7++)
+                                {
+                                    for (int i8 = 0; i8 < c1 - firstHandCombines[i][7]; i8++)
+                                    {
+                                        for (int i9 = 0; i9 < c1 - firstHandCombines[i][8]; i9++)
+                                        {
+                                            for (int i10 = 0; i10 < c1 - firstHandCombines[i][9]; i10++)
+                                            {
+                                                for (int i11 = 0; i11 < c1 - firstHandCombines[i][10]; i11++)
+                                                {
+                                                    for (int i12 = 0; i12 < c1 - firstHandCombines[i][11]; i12++)
+                                                    {
+                                                        for (int i13 = 0; i13 < c1 - firstHandCombines[i][12]; i13++)
+                                                        {
+                                                            for (int i14 = 0; i14 < c2 - firstHandCombines[i][13]; i14++)
+                                                            {
+                                                                for (int i15 = 0; i15 < c2 - firstHandCombines[i][14]; i15++)
+                                                                {
+                                                                    if (i1 + i2 + i3 + i4 + i5 + i6 + i7 + i8 + i9 + i10 + i11 + i12 + i13 + i14 + i15 == counts)
+                                                                    {
                                                                         handCombinesCounts++;
-                                                                        if (handCombinesCounts < 40){
-                                                                            std::cout << handCombinesCounts<<":" << pokers2String({i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11,i12,i13,i14,i15}) << std::endl;
+                                                                        if (handCombinesCounts < 40)
+                                                                        {
+                                                                            std::cout << handCombinesCounts << ":" << pokers2String({i1, i2, i3, i4, i5, i6, i7, i8, i9, i10, i11, i12, i13, i14, i15}) << std::endl;
                                                                         }
-                                                                        if (handCombinesCounts % (10000 * 1000) == 0){
-                                                                            std::cout << handCombinesCounts<<":" << pokers2String({i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11,i12,i13,i14,i15}) << std::endl;
+                                                                        if (handCombinesCounts % (10000 * 1000) == 0)
+                                                                        {
+                                                                            std::cout << handCombinesCounts << ":" << pokers2String({i1, i2, i3, i4, i5, i6, i7, i8, i9, i10, i11, i12, i13, i14, i15}) << std::endl;
                                                                         }
                                                                     }
                                                                 }
@@ -325,32 +363,51 @@ inline u_int64_t parseHandCombinesCounts(
     return handCombinesCounts;
 }
 
-inline u_int64_t parseHandCombinesCounts(int counts){
-    u_int64_t handCombinesCounts=0;
-    int c1=5;
-    int c2=2;
-    for (int i1=0;i1<c1;i1++){
-        for (int i2=0;i2<c1;i2++){
-            for (int i3=0;i3<c1;i3++){
-                for (int i4=0;i4<c1;i4++){
-                    for (int i5=0;i5<c1;i5++){
-                        for (int i6=0;i6<c1;i6++){
-                            for (int i7=0;i7<c1;i7++){
-                                for (int i8=0;i8<c1;i8++){
-                                    for (int i9=0;i9<c1;i9++){
-                                        for (int i10=0;i10<c1;i10++){
-                                            for (int i11=0;i11<c1;i11++){
-                                                for (int i12=0;i12<c1;i12++){
-                                                    for (int i13=0;i13<c1;i13++){
-                                                        for (int i14=0;i14<c2;i14++){
-                                                            for (int i15=0;i15<c2;i15++){
-                                                                if (i1+i2+i3+i4+i5+i6+i7+i8+i9+i10+i11+i12+i13+i14 +i15 == counts){
+inline u_int64_t parseHandCombinesCounts(int counts)
+{
+    u_int64_t handCombinesCounts = 0;
+    int c1 = 5;
+    int c2 = 2;
+    for (int i1 = 0; i1 < c1; i1++)
+    {
+        for (int i2 = 0; i2 < c1; i2++)
+        {
+            for (int i3 = 0; i3 < c1; i3++)
+            {
+                for (int i4 = 0; i4 < c1; i4++)
+                {
+                    for (int i5 = 0; i5 < c1; i5++)
+                    {
+                        for (int i6 = 0; i6 < c1; i6++)
+                        {
+                            for (int i7 = 0; i7 < c1; i7++)
+                            {
+                                for (int i8 = 0; i8 < c1; i8++)
+                                {
+                                    for (int i9 = 0; i9 < c1; i9++)
+                                    {
+                                        for (int i10 = 0; i10 < c1; i10++)
+                                        {
+                                            for (int i11 = 0; i11 < c1; i11++)
+                                            {
+                                                for (int i12 = 0; i12 < c1; i12++)
+                                                {
+                                                    for (int i13 = 0; i13 < c1; i13++)
+                                                    {
+                                                        for (int i14 = 0; i14 < c2; i14++)
+                                                        {
+                                                            for (int i15 = 0; i15 < c2; i15++)
+                                                            {
+                                                                if (i1 + i2 + i3 + i4 + i5 + i6 + i7 + i8 + i9 + i10 + i11 + i12 + i13 + i14 + i15 == counts)
+                                                                {
                                                                     handCombinesCounts++;
-                                                                    if (handCombinesCounts < 40){
-                                                                            std::cout << handCombinesCounts<<":" << pokers2String({i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11,i12,i13,i14,i15}) << std::endl;
+                                                                    if (handCombinesCounts < 40)
+                                                                    {
+                                                                        std::cout << handCombinesCounts << ":" << pokers2String({i1, i2, i3, i4, i5, i6, i7, i8, i9, i10, i11, i12, i13, i14, i15}) << std::endl;
                                                                     }
-                                                                    if (handCombinesCounts % (10000*1000) == 0){
-                                                                            std::cout << handCombinesCounts<<":" << pokers2String({i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11,i12,i13,i14,i15}) << std::endl;
+                                                                    if (handCombinesCounts % (10000 * 1000) == 0)
+                                                                    {
+                                                                        std::cout << handCombinesCounts << ":" << pokers2String({i1, i2, i3, i4, i5, i6, i7, i8, i9, i10, i11, i12, i13, i14, i15}) << std::endl;
                                                                     }
                                                                 }
                                                             }
@@ -365,13 +422,354 @@ inline u_int64_t parseHandCombinesCounts(int counts){
                         }
                     }
                 }
-             }
+            }
         }
     }
 
     return handCombinesCounts;
 }
 
+inline std::vector<int> buildCombValue(std::vector<int> allValues,std::vector<int> comb){
+    std::vector<int>  combValue;
+    for (auto loc : comb){
+        combValue.push_back(allValues[loc]);
+    }
+    return combValue;
+}
+
+inline std::set<RankMove> buildAllValidMoves()
+{
+    std::set<RankMove> validMoves = {RankMove(kPass, 0)};
+    for (int i = LandlordMoveType::kSingle; i <= kKingBomb; i++)
+    {
+        switch (i)
+        {
+        case kSingle /* 单 */:
+            for(RankType rank = 0; rank <= kPokerJOKER_RANK; rank++){
+                validMoves.insert(RankMove(kSingle,rank));
+            }
+            break;
+        case kPair /* 对 */:
+        case LandlordMoveType::kThree:
+        case kBomb: // 炸弹，包括癞子炸弹，需要结合牌值编码比较大小。
+            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
+                validMoves.insert(RankMove((LandlordMoveType)i,rank));
+            }
+            break;
+        case kKingBomb:      // 王炸，双王，多数玩法都是最大牌了。
+            validMoves.insert(RankMove((LandlordMoveType)i,kPokerJoker_RANK,kPokerJOKER_RANK));
+        case kStraight:      //顺子
+            for (int j = 12; j >= 5; j--){
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                    validMoves.insert(RankMove((LandlordMoveType)i,k,k+j-1));
+                }
+            }
+            break;
+        case kTwoStraight:   //拖拉机，连对
+            for (int j = 10; j >= 3; j--){
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                    validMoves.insert(RankMove((LandlordMoveType)i,k,k+j-1));
+                }
+            }
+            break;
+        case kThreeStraight: //飞机，没翅膀，3连牌
+            for (int j = 5; j >= 2; j--){
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                    validMoves.insert(RankMove((LandlordMoveType)i,k,k+j-1));
+                }
+            }
+            break;
+        case kThreeAddSingle:       //三带一
+            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
+                for(RankType add = 0; add <= kPokerJOKER_RANK; add++){
+                    if (add != rank){
+                        validMoves.insert(RankMove((LandlordMoveType)i,rank,rank,{add}));
+                    }
+                }                
+            }
+            break;
+        case kThreeAddPair:         //三带对
+            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
+                for(RankType add = 0; add <= kPoker2_RANK; add++){
+                    if (add != rank){
+                        validMoves.insert(RankMove((LandlordMoveType)i,rank,rank,{add}));
+                    }
+                }                
+            }
+            break;
+        case kThreeStraightAddOne:  // 飞机带单翅膀
+            for (int j = 5; j >= 2; j--){
+                int samePokerCounts = std::min(4,j);
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                    std::vector<int> addRanks;
+                    for(int l = 0; l <= kPokerJOKER_RANK; l++){
+                        if ((l < k || l >k+j-1) && l < kPokerJoker_RANK){
+                            for (int m = 0; m < samePokerCounts; m++){
+                                addRanks.push_back(l);
+                            }                            
+                        }else{
+                            addRanks.push_back(l);
+                        }
+                    }
+                    std::vector<std::vector<int>> combs = combine(addRanks.size(),j);
+                    for (auto comb : combs){
+                        validMoves.insert(RankMove((LandlordMoveType)i,k,k+j-1,buildCombValue(addRanks,comb)));
+                    }
+                }
+            }
+            break;
+        case kThreeStraightAddPair: // 飞机带双翅膀
+            for (int j = 5; j >= 2; j--){
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                    std::vector<int> addRanks;
+                    for(int l = 0; l <= kPoker2_RANK; l++){
+                        if (l < k || l >k+j-1){
+                            for (int m = 0; m < 2; m++){
+                                addRanks.push_back(l);
+                            }                            
+                        }
+                    }
+                    std::vector<std::vector<int>> combs = combine(addRanks.size(),j);
+                    for (auto comb : combs){
+                        validMoves.insert(RankMove((LandlordMoveType)i,k,k+j-1,buildCombValue(addRanks,comb)));
+                    }
+                }
+            }
+            break;
+        case kFourAddTwoSingles: //四带两单牌
+            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
+                 std::vector<int> addRanks;
+                for(int l = 0; l <= kPokerJOKER_RANK; l++){
+                    if ( l >= kPokerJoker_RANK){
+                        addRanks.push_back(l);
+                    }else if (l  != rank){
+                        for (int m = 0; m < 2; m++){
+                            addRanks.push_back(l);
+                        }                            
+                    }
+                }
+                std::vector<std::vector<int>> combs = combine(addRanks.size(),2);
+                for (auto comb : combs){
+                    validMoves.insert(RankMove((LandlordMoveType)i,rank,rank,buildCombValue(addRanks,comb)));
+                }
+            }
+            break;
+        case kFourAddTwoPairs:   //四带两对牌
+            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
+                 std::vector<int> addRanks;
+                for(int l = 0; l <= kPoker2_RANK; l++){
+                    if (l  != rank){
+                        for (int m = 0; m < 2; m++){
+                            addRanks.push_back(l);
+                        }                            
+                    }
+                }
+                std::vector<std::vector<int>> combs = combine(addRanks.size(),2);
+                for (auto comb : combs){
+                    validMoves.insert(RankMove((LandlordMoveType)i,rank,rank,buildCombValue(addRanks,comb)));
+                }
+            }
+            break;
+        default:
+            break;
+        }
+    }
+    return validMoves;
+}
+
+inline std::vector<int> buildAllValidActions()
+{
+    std::vector<int> actions = {0};
+    RankMove move(kInvalid,0);
+    actions.push_back(move2Action4(move));
+    for (int i = LandlordMoveType::kSingle; i <= kKingBomb; i++)
+    {
+        switch (i)
+        {
+        case kSingle /* 单 */:
+            for(RankType rank = 0; rank <= kPokerJOKER_RANK; rank++){
+                move =RankMove(kSingle,rank);
+                actions.push_back(move2Action4(move));
+            }
+            break;
+        case kPair /* 对 */:
+        case LandlordMoveType::kThree:
+        case kBomb: // 炸弹，包括癞子炸弹，需要结合牌值编码比较大小。
+            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
+                move = RankMove((LandlordMoveType)i,rank);
+                actions.push_back(move2Action4(move));
+            }
+            break;
+        case kKingBomb:      // 王炸，双王，多数玩法都是最大牌了。
+            move = RankMove((LandlordMoveType)i,kPokerJoker_RANK,kPokerJOKER_RANK);
+            actions.push_back(move2Action4(move));
+            break;
+        case kStraight:      //顺子
+            for (int j = 12; j >= 5; j--){
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                    move = RankMove((LandlordMoveType)i,k,k+j-1);
+                    actions.push_back(move2Action4(move));
+                }
+            }
+            break;
+        case kTwoStraight:   //拖拉机，连对
+            for (int j = 10; j >= 3; j--){
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                    move = RankMove((LandlordMoveType)i,k,k+j-1);
+                    actions.push_back(move2Action4(move));
+                }
+            }
+            break;
+        case kThreeStraight: //飞机，没翅膀，3连牌
+            for (int j = 5; j >= 2; j--){
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                    move =RankMove((LandlordMoveType)i,k,k+j-1);
+                    actions.push_back(move2Action4(move));
+                }
+            }
+            break;
+        case kThreeAddSingle:       //三带一
+            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
+                for(RankType add = 0; add <= kPokerJOKER_RANK; add++){
+                    if (add != rank){
+                        move = RankMove((LandlordMoveType)i,rank,rank,{add});
+                        actions.push_back(move2Action4(move));
+                    }
+                }                
+            }
+            break;
+        case kThreeAddPair:         //三带对
+            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
+                for(RankType add = 0; add <= kPoker2_RANK; add++){
+                    if (add != rank){
+                        move = RankMove((LandlordMoveType)i,rank,rank,{add});
+                        actions.push_back(move2Action4(move));
+                    }
+                }                
+            }
+            break;
+        case kThreeStraightAddOne:  // 飞机带单翅膀
+            for (int j = 5; j >= 2; j--){
+                int samePokerCounts = std::min(4,j);
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                    std::vector<int> addRanks;
+                    for(int l = 0; l <= kPokerJOKER_RANK; l++){
+                        if ((l < k || l >k+j-1) && l < kPokerJoker_RANK){
+                            for (int m = 0; m < samePokerCounts; m++){
+                                addRanks.push_back(l);
+                            }                            
+                        }else{
+                            addRanks.push_back(l);
+                        }
+                    }
+                    std::vector<std::vector<int>> combs = combine(addRanks.size(),j);
+                    std::set<std::vector<int>> addRanksByComb;
+                    for (auto comb : combs){
+                       addRanksByComb.insert(buildCombValue(addRanks,comb));
+                    }
+                    std::cout << "combs.size: " << combs.size() << " , addRanks.size: " << 
+                            addRanks.size() <<  " , straight.size: " << j << " , uniqAddRanks.size: " << 
+                            addRanksByComb.size() << std::endl;
+                    for (auto ranks : addRanksByComb){
+                        move = RankMove((LandlordMoveType)i,k,k+j-1,ranks);
+                        actions.push_back(move2Action4(move));
+                    }
+                }
+            }
+            break;
+        case kThreeStraightAddPair: // 飞机带双翅膀
+            for (int j = 5; j >= 2; j--){
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                    std::vector<int> addRanks;
+                    for(int l = 0; l <= kPoker2_RANK; l++){
+                        if (l < k || l >k+j-1){
+                            for (int m = 0; m < 2; m++){
+                                addRanks.push_back(l);
+                            }                            
+                        }
+                    }
+                    std::vector<std::vector<int>> combs = combine(addRanks.size(),j);
+                    std::set<std::vector<int>> addRanksByComb;
+                    for (auto comb : combs){
+                       addRanksByComb.insert(buildCombValue(addRanks,comb));
+                    }
+                    std::cout << "combs.size: " << combs.size() << " , addRanks.size: " << 
+                            addRanks.size() <<  " , straight.size: " << j << " , uniqAddRanks.size: " << 
+                            addRanksByComb.size() << std::endl;
+                    for (auto ranks : addRanksByComb){
+                        move = RankMove((LandlordMoveType)i,k,k+j-1,ranks);
+                        actions.push_back(move2Action4(move));
+                    }
+                }
+            }
+            break;
+        case kFourAddTwoSingles: //四带两单牌
+            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
+                 std::vector<int> addRanks;
+                for(int l = 0; l <= kPokerJOKER_RANK; l++){
+                    if ( l >= kPokerJoker_RANK){
+                        addRanks.push_back(l);
+                    }else if (l  != rank){
+                        for (int m = 0; m < 2; m++){
+                            addRanks.push_back(l);
+                        }                            
+                    }
+                }
+                std::vector<std::vector<int>> combs = combine(addRanks.size(),2);
+                std::set<std::vector<int>> addRanksByComb;
+                    for (auto comb : combs){
+                       addRanksByComb.insert(buildCombValue(addRanks,comb));
+                    }
+                    std::cout << "combs.size: " << combs.size() << " , addRanks.size: " << 
+                            addRanks.size() <<  " , kFourAddTwoSingles, uniqAddRanks.size: " << 
+                            addRanksByComb.size() << std::endl;
+                    for (auto ranks : addRanksByComb){
+                        move = RankMove((LandlordMoveType)i,rank,rank,ranks);
+                        actions.push_back(move2Action4(move));
+                    }
+            }
+            break;
+        case kFourAddTwoPairs:   //四带两对牌
+            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
+                 std::vector<int> addRanks;
+                for(int l = 0; l <= kPoker2_RANK; l++){
+                    if (l  != rank){
+                        for (int m = 0; m < 2; m++){
+                            addRanks.push_back(l);
+                        }                            
+                    }
+                }
+                std::vector<std::vector<int>> combs = combine(addRanks.size(),2);
+                std::set<std::vector<int>> addRanksByComb;
+                    for (auto comb : combs){
+                       addRanksByComb.insert(buildCombValue(addRanks,comb));
+                    }
+                    std::cout << "combs.size: " << combs.size() << " , addRanks.size: " << 
+                            addRanks.size() <<  " , fourAddTwoPair , uniqAddRanks.size: " << 
+                            addRanksByComb.size() << std::endl;
+                    for (auto ranks : addRanksByComb){
+                        move = RankMove((LandlordMoveType)i,rank,rank,ranks);
+                        actions.push_back(move2Action4(move));
+                    }
+            }
+            break;
+        default:
+            break;
+        }
+    }
+    return actions;
+}
+
+/**
+ * 斗地主Action过大，主要是因为飞机带牌。
+ * 简单编码虽然可行，但是python部分也有Action合法性检测，还是必须把Action数量降低。
+ * 所有穷举了所有合法Action。然后构造一个数组，用下标作为Action，
+ * 这样可以把Action数量（OpenSpiel计算的最大Action作为Acion数量）尽可能限定在较小的范围。
+ */
+std::vector<int> initUserActions();
+LandlordMoveType decodeActionType5(int action);
+RankMove action2Move5(int action);
+int move2Action5(RankMove &move);
 
 } // namespace landlord_learning_env
 #endif // ACTION

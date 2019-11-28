@@ -115,6 +115,13 @@ public:
                 endRank_ == other_move.EndRank() &&
                 addedRanks_ == other_move.AddedRanks());
     };
+     bool operator < (const RankMove &other_move) const
+    {
+        return (type_ < other_move.Type() || 
+                startRank_ < other_move.StartRank() ||
+                endRank_ < other_move.EndRank()  ||
+                addedRanks_ < other_move.AddedRanks());
+    };
     LandlordMoveType Type() const { return type_; }
     RankType StartRank() const { return startRank_; }
     RankType EndRank() const { return endRank_; }

@@ -61,7 +61,8 @@ namespace landlord {
 // Constants.
 constexpr int NumPlayers = 3;   //暂时只考虑3人斗地主
 // See action encoding below.
-constexpr int NumDistinctActions= (1 << 15); 
+constexpr int NumDistinctActions= 99999; 
+constexpr int ObservationNormalizedVectorLen = 243;
 
 enum BidAction{kPass,kOne,kTwo,kThree};
 //landlord action encode

@@ -34,7 +34,8 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_integer("num_iterations", 400, "Number of iterations")
 flags.DEFINE_integer("num_traversals", 40, "Number of traversals/games")
-flags.DEFINE_string("game_name", "kuhn_poker", "Name of the game")
+#flags.DEFINE_string("game_name", "kuhn_poker", "Name of the game")
+flags.DEFINE_string("game_name", "landlord", "Name of the game")
 
 
 def main(unused_argv):

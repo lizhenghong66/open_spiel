@@ -104,7 +104,7 @@ std::shared_ptr<const Game> OpenSpielLandlordGame::Clone() const
 
 std::vector<int> OpenSpielLandlordGame::ObservationNormalizedVectorShape() const
 {
-  return {1000};
+  return {ObservationNormalizedVectorLen};
 }
 
 int OpenSpielLandlordGame::MaxGameLength() const
@@ -120,7 +120,10 @@ Player OpenSpielLandlordState::CurrentPlayer() const
   if (IsTerminal())
     return kTerminalPlayerId;
   //发牌也使用了一个action，必须排除
-  return (history_.size() - 1) % landlord::NumPlayers;
+  if(!bided_){
+    return (history_.size() - 1) % landlord::NumPlayers;
+  }
+  return (lastMaxBidedPlayer_ + (history_.size() - 4) % landlord::NumPlayers)%landlord::NumPlayers;
 }
 
 std::vector<Action> OpenSpielLandlordState::LegalActions() const
@@ -134,14 +137,15 @@ std::vector<Action> OpenSpielLandlordState::LegalActions() const
     //已经发牌
     if (bided_)
     {
+      //return {};
       //已经叫牌，开始游戏了
       //因为action编码原因，可以很容易区分主动出牌和被动出牌，
       Action lastAction1 = history_[history_.size()-1];
       Action lastAction2 = history_[history_.size()-2];
       // LandlordMoveType  last1 = decodeActionType(lastAction1);
       // LandlordMoveType  last2 = decodeActionType(lastAction2);
-      LandlordMoveType  last1 = decodeActionType4(lastAction1);
-      LandlordMoveType  last2 = decodeActionType4(lastAction2);
+      LandlordMoveType  last1 = decodeActionType5(lastAction1);
+      LandlordMoveType  last2 = decodeActionType5(lastAction2);
       
       std::vector<RankMove> moves;
       if (history_.size() <= 4 || last1 == LandlordMoveType::kPass && last2 == LandlordMoveType::kPass){
@@ -152,7 +156,7 @@ std::vector<Action> OpenSpielLandlordState::LegalActions() const
       }else{
         //RankMove otherMove = last1 == LandlordMoveType::kPass?action2RankMove(lastAction2):action2RankMove(lastAction1);
         RankMove otherMove = 
-          (last1 == LandlordMoveType::kPass?action2Move4(lastAction2):action2Move4(lastAction1));
+          (last1 == LandlordMoveType::kPass?action2Move5(lastAction2):action2Move5(lastAction1));
          moves = parse(hands_[CurrentPlayer()].first,otherMove);
       }
       std::vector<Action> actions = rankMoves2Actions(moves);
@@ -167,6 +171,7 @@ std::vector<Action> OpenSpielLandlordState::LegalActions() const
       {
         bidActions.push_back(action);
       }
+      std::cout << "LegalActions  size when bid:"  << bidActions.size() << std::endl;
       return bidActions; //叫牌动作。
     }
   }
@@ -196,7 +201,7 @@ std::string OpenSpielLandlordState::ActionToString(Player player,
   }
   else
   {
-    RankMove move = action2Move4(action_id);
+    RankMove move = action2Move5(action_id);
     strAction = move.toString();
   }
 
@@ -252,7 +257,7 @@ void OpenSpielLandlordState::DoApplyAction(Action action)
       //     }
       //   }
 
-      RankMove move = action2Move4(action);
+      RankMove move = action2Move5(action);
       if (move.Type() != LandlordMoveType::kPass && move.Type() != kInvalid){
         RankCountsArray countsArray = rankMove2Counts(move);
         Player cur_player = CurrentPlayer();
@@ -294,22 +299,23 @@ void OpenSpielLandlordState::DoApplyAction(Action action)
         originHands_[lastMaxBidedPlayer_].insert(originHands_[lastMaxBidedPlayer_].end(),
                                                  landLordPokers_.begin(), landLordPokers_.end());
         //地主默认都是0，便于后面机器学习时统一处理。因此需要进行手牌交换
-        if (lastMaxBidedPlayer_ == 1)
-        {
-          std::swap(originHands_[lastMaxBidedPlayer_], originHands_[0]);
-          std::swap(originHands_[lastMaxBidedPlayer_], originHands_[2]);
-        }
-        else if (lastMaxBidedPlayer_ == 2)
-        {
-          std::swap(originHands_[lastMaxBidedPlayer_], originHands_[0]);
-          std::swap(originHands_[lastMaxBidedPlayer_], originHands_[1]);
-        }
+        // if (lastMaxBidedPlayer_ == 1)
+        // {
+        //   std::swap(originHands_[lastMaxBidedPlayer_], originHands_[0]);
+        //   std::swap(originHands_[lastMaxBidedPlayer_], originHands_[2]);
+        // }
+        // else if (lastMaxBidedPlayer_ == 2)
+        // {
+        //   std::swap(originHands_[lastMaxBidedPlayer_], originHands_[0]);
+        //   std::swap(originHands_[lastMaxBidedPlayer_], originHands_[1]);
+        // }
 
         //此时再解析手牌直方图
         for (Player player = 0; player < num_players_; player++)
         {
           hands_[player] = buildRankCounts(originHands_[player]);
         }
+        //hands_[lastMaxBidedPlayer_] = buildRankCounts(originHands_[lastMaxBidedPlayer_]);
       }
     }
   }
@@ -323,6 +329,12 @@ void OpenSpielLandlordState::DoApplyAction(Action action)
     }
     landLordPokers_ = deck_.Deal(51, deck_.NumCards());
     dealt_ = true;
+
+    //此时再解析手牌直方图
+    for (Player player = 0; player < num_players_; player++)
+    {
+      hands_[player] = buildRankCounts(originHands_[player]);
+    }
   }
 }
 
@@ -336,6 +348,60 @@ void OpenSpielLandlordState::ObservationAsNormalizedVector(
 {
   values->resize(game_->ObservationNormalizedVectorSize());
   std::fill(values->begin(), values->end(), 0);
+  
+  int offset = 0;
+  // Mark who I am.
+  (*values)[player] = 1;
+  offset += num_players_;
+  
+  //记录当前状态(发牌/叫分/出牌，三阶段)
+  if (!dealt_){
+    (*values)[offset] = 1;
+  }else if (!bided_){
+    (*values)[offset+1] = 1;
+  }else{
+    (*values)[offset+2] = 1;
+  }
+  offset += 3;
+
+  //记录最大叫分和方位
+  if(lastMaxBidedPlayer_ >= 0){
+     (*values)[offset+lastMaxBidedPlayer_] = 1;
+  }
+  offset += 3;
+  if (((int)lastMaxBidedAction_) > 0){
+    (*values)[offset+((int)lastMaxBidedAction_)-1] = 1;
+  }
+  offset += 3;
+  //先前是考虑固定0方位为地主，但是叫牌后，地主可能不是0号玩家，需要进行换牌，反而麻烦。
+  //palyer== lastMaxBidedPlayer_ 是地主，
+  //palyer== （lastMaxBidedPlayer_ +1）% 3 是下家
+  //palyer== （lastMaxBidedPlayer_ +2）% 3 是顶家
+  //只是修改计算当前玩家时做一下修改。
+  
+  //编码手牌直方图（ranks数量，每个rank 4bit，15个ranks）
+  // We note several features use a thermometer representation instead of one-hot.
+// For example, life tokens could be: 0000 (0), 1000 (1), 1100 (2), 1110 (3),1111 (4).
+// Returns the number of entries written to the encoding.
+  for(int i = 0; i < landlord::NumPlayers; i++){
+    for(int j = 0; j < 15; j++){
+      for (int k = 0; k < hands_[i].first[j]; k++){
+          (*values)[offset+ i * 60 + j*4 + k]  = 1;
+      }      
+    }
+  }
+  offset += 3 * 60;
+  //编码最近3个出牌action，put action 接近10万，使用17bit整数编码。
+  for(int i = history_.size()-1; i > 4 && history_.size() - i <= 3; i--){
+    Action lastAction = history_[i];
+    for (int j = 0; j < 17; j++){
+      int flag = 1 << j;
+      flag = (lastAction & flag) >> j;
+      (*values)[offset+ (history_.size() - i - 1)*17 + j]  = flag;
+    }
+  }
+  offset += 3 * 17;
+  //每个玩家已出牌，因为看了所有玩家牌，这个出牌可以先忽略。
 }
 
 std::unique_ptr<State> OpenSpielLandlordState::Clone() const
@@ -426,10 +492,10 @@ RankMove action2RankMove(Action &action)
 
 std::vector<Action> rankMoves2Actions(std::vector<RankMove> &moves){
   std::set<Action> actions;
-  std::cout << "rankMoves2Actions:" << std::endl;
+  //std::cout << "rankMoves2Actions:" << std::endl;
   for (auto move : moves){
     //Action action = rankMove2Action(move);
-    Action action = move2Action4(move);
+    Action action = move2Action5(move);
     // RankMove tmp = action2RankMove(action);
     // std::cout << move.toString() << std::endl;
     // RankCountsArray counts = decodeRankCounts(action);

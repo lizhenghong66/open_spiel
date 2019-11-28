@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <fstream>
 
 namespace landlord_learning_env
 {
@@ -206,6 +207,72 @@ int rankMove2Action(RankMove &move)
 
 RankMove action2RankMove(int action)
 {
+}
+/**
+ * 斗地主Action过大，主要是因为飞机带牌。
+ * 简单编码虽然可行，但是python部分也有Action合法性检测，还是必须把Action数量降低。
+ * 所有穷举了所有合法Action。然后构造一个数组，用下标作为Action，
+ * 这样可以把Action数量（OpenSpiel计算的最大Action作为Acion数量）尽可能限定在较小的范围。
+ */
+std::vector<int> initUserActions()
+{
+    std::vector<int> actions;
+    std::ifstream inFile("actions.bin", std::ios::in | std::ios::binary);
+    if (inFile.good())
+    {
+        int action;
+        while (inFile.read((char *)&action, sizeof(action)))
+        { //一直读到文件结束
+            actions.push_back(action);
+        }
+        inFile.close();
+    }
+    else
+    {
+        actions = buildAllValidActions();
+        std::ofstream outFile("actions.bin", std::ios::out | std::ios::binary);
+        for (auto action : actions)
+        {
+            //outFile <<  action ;
+            outFile.write((char *)&action, sizeof(action));
+        }
+        outFile.close();
+    }
+    return actions;
+}
+
+std::vector<int> AllValidUserActions = initUserActions();
+int toAction4(int action){
+    RankMove move(kInvalid,0);
+    int action4 = move2Action4(move);
+    if (action >= 0 && action < AllValidUserActions.size()){
+        action4 = AllValidUserActions[action];
+    }
+    return action4;
+}
+LandlordMoveType decodeActionType5(int action){
+    int action4 = toAction4(action);
+    return decodeActionType4(action4);
+}
+RankMove action2Move5(int action){
+    int action4 = toAction4(action);
+    return action2Move4(action4);
+}
+int move2Action5(RankMove &move){
+    int action5 = -1;
+    int action4 = move2Action4(move);
+    auto itr = std::find(AllValidUserActions.begin(),AllValidUserActions.end(),action4);
+    if (itr != AllValidUserActions.end()) {
+       action5 = std::distance(AllValidUserActions.begin(), itr);
+    }else{
+        int count = 0;
+        for (auto action : AllValidUserActions){
+            std::cout << count++ << " : " << action << " ===> " << action2Move4(action).toString() << std::endl;
+        }
+        std::cout << "unrecognized move:" << move.toString()  << " ," << action4 << std::endl;
+        exit(-1);
+    } 
+    return action5;
 }
 
 } // namespace landlord_learning_env

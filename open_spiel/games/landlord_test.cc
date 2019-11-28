@@ -65,11 +65,25 @@ void BasicLandlordTests() {
   // }
 }
 
+void SimpleLandlordTests() {
+  std::shared_ptr<const Game> game = LoadGame("landlord");
+  SPIEL_CHECK_TRUE(game != nullptr);
+  std::unique_ptr<State> state = game->NewInitialState();
+
+  SPIEL_CHECK_TRUE(state->IsChanceNode());
+  std::vector<Action> legalActions = state->LegalActions();
+  state->ApplyAction(legalActions[0]);  // Spawn B top-right
+  std::cout << state->ToString() << std::endl;
+   state->ApplyAction(BidAction::kThree);
+   std::vector<double> obs;
+   state->ObservationAsNormalizedVector(state->CurrentPlayer(),&obs);
+}
 }  // namespace
 }  // namespace landlord
 }  // namespace open_spiel
 
 int main(int argc, char **argv) { 
+  open_spiel::landlord::SimpleLandlordTests();
   open_spiel::landlord::encodeTests();
   open_spiel::landlord::BasicLandlordTests(); 
 
