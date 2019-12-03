@@ -24,6 +24,22 @@ from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import dqn
 import pyspiel
 
+import logging
+
+def print_iteration(time_step, player_id, action=None):
+  """Print TimeStep information."""
+  obs = time_step.observations
+  logging.info("Player: %s", player_id)
+  if time_step.first():
+    logging.info("Info state: %s, - - %s", obs["info_state"][player_id],
+                 time_step.step_type)
+  else:
+    logging.info("Info state: %s, %s %s %s", obs["info_state"][player_id],
+                 time_step.rewards[player_id], time_step.discounts[player_id],
+                 time_step.step_type)
+  if action is not None:
+    logging.info("Action taken: %s", action)
+  logging.info("-" * 80)
 
 class DQNTest(tf.test.TestCase):
 
@@ -91,6 +107,48 @@ class DQNTest(tf.test.TestCase):
         current_player = time_step.observations["current_player"]
         agent_output = [agent.step(time_step) for agent in agents]
         time_step = env.step([agent_output[current_player].action])
+
+      for agent in agents:
+        agent.step(time_step)
+
+  def test_run_landlord(self):
+    # landlord is an optional game, so check we have it before running the test.
+    game = "landlord"
+    if game not in pyspiel.registered_names():
+      return
+
+    num_players = 3
+    env_configs = {
+    }
+    env = rl_environment.Environment(game, **env_configs)
+    state_size = env.observation_spec()["info_state"][0]
+    num_actions = env.action_spec()["num_actions"]
+
+    with self.session() as sess:
+      agents = [
+          dqn.DQN(  # pylint: disable=g-complex-comprehension
+              sess,
+              player_id,
+              state_representation_size=state_size,
+              num_actions=num_actions,
+              hidden_layers_sizes=[16],
+              replay_buffer_capacity=10,
+              batch_size=5) for player_id in range(num_players)
+      ]
+      sess.run(tf.global_variables_initializer())
+      time_step = env.reset()
+      while not time_step.last():
+        current_player = time_step.observations["current_player"]
+        #agent_output = [agent.step(time_step) for agent in agents]
+        #time_step = env.step([agent_output[current_player].action])
+        if env.is_turn_based:
+          agent_output = agents[current_player].step(time_step)
+          action_list = [agent_output.action]
+        else:
+          agents_output = [agent.step(time_step) for agent in agents]
+          action_list = [agent_output.action for agent_output in agents_output]
+        print_iteration(time_step, current_player, action_list)
+        time_step = env.step(action_list)
 
       for agent in agents:
         agent.step(time_step)

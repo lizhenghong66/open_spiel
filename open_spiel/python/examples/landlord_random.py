@@ -21,62 +21,75 @@ from __future__ import print_function
 import logging
 from absl import app
 from absl import flags
-import numpy as np
 
 from open_spiel.python import rl_environment
+from open_spiel.python.algorithms import random_agent
 
 FLAGS = flags.FLAGS
 
-#flags.DEFINE_string("game", "tic_tac_toe", "Name of the game")
-flags.DEFINE_string("game", "landlord", "Name of the game")
-flags.DEFINE_integer("num_players", None, "Number of players")
+flags.DEFINE_string("game", "landlord", "Name of the game.")
+flags.DEFINE_integer("num_players", 3, "Number of players.")
+flags.DEFINE_integer("num_episodes", 100, "Number of episodes.")
 
 
-def select_actions(observations, cur_player):
-  cur_legal_actions = observations["legal_actions"][cur_player]
-  actions = [np.random.choice(cur_legal_actions)]
-  return actions
-
-
-def print_iteration(time_step, actions, player_id):
+def print_iteration(time_step, player_id, action=None):
   """Print TimeStep information."""
   obs = time_step.observations
   logging.info("Player: %s", player_id)
-  if time_step.step_type.first():
+  if time_step.first():
     logging.info("Info state: %s, - - %s", obs["info_state"][player_id],
                  time_step.step_type)
   else:
     logging.info("Info state: %s, %s %s %s", obs["info_state"][player_id],
                  time_step.rewards[player_id], time_step.discounts[player_id],
                  time_step.step_type)
-  logging.info("Action taken: %s", actions)
+  if action is not None:
+    logging.info("Action taken: %s", action)
   logging.info("-" * 80)
 
 
-def turn_based_example(unused_arg):
-  """Example usage of the RL environment for turn-based games."""
-  # `rl_main_loop.py` contains more details and simultaneous move examples.
+def main_loop(unused_arg):
+  """RL main loop example."""
   logging.info("Registered games: %s", rl_environment.registered_games())
   logging.info("Creating game %s", FLAGS.game)
 
-  env_configs = {"players": FLAGS.num_players} if FLAGS.num_players else {}
+  #env_configs = {"players": FLAGS.num_players} if FLAGS.num_players else {}
+  env_configs =  {}
   env = rl_environment.Environment(FLAGS.game, **env_configs)
+  num_actions = env.action_spec()["num_actions"]
+
+  agents = [
+      random_agent.RandomAgent(player_id=i, num_actions=num_actions)
+      for i in range(FLAGS.num_players)
+  ]
 
   logging.info("Env specs: %s", env.observation_spec())
   logging.info("Action specs: %s", env.action_spec())
 
-  time_step = env.reset()
+  for cur_episode in range(FLAGS.num_episodes):
+    logging.info("Starting episode %s", cur_episode)
+    time_step = env.reset()
+    while not time_step.last():
+      pid = time_step.observations["current_player"]
 
-  while not time_step.step_type.last():
-    pid = time_step.observations["current_player"]
-    actions = select_actions(time_step.observations, pid)
-    print_iteration(time_step, actions, pid)
-    time_step = env.step(actions)
+      if env.is_turn_based:
+        agent_output = agents[pid].step(time_step)
+        action_list = [agent_output.action]
+      else:
+        agents_output = [agent.step(time_step) for agent in agents]
+        action_list = [agent_output.action for agent_output in agents_output]
 
-  # Print final state of end game.
-  for pid in range(env.num_players):
-    print_iteration(time_step, actions, pid)
+      print_iteration(time_step, pid, action_list)
+      time_step = env.step(action_list)
+
+    # Episode is over, step all agents with final state.
+    for agent in agents:
+      agent.step(time_step)
+
+    # Print final state of end game.
+    for pid in range(env.num_players):
+      print_iteration(time_step, pid)
 
 
 if __name__ == "__main__":
-  app.run(turn_based_example)
+  app.run(main_loop)

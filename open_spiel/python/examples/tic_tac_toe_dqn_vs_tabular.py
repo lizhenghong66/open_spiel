@@ -129,6 +129,7 @@ def main(_):
 
       # Episode is over, step all agents with final info state.
       for agent in agents:
+        print("-----:",agent)
         agent.step(time_step)
 
     # Evaluate against random agent
