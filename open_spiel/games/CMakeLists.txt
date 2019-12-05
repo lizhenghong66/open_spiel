@@ -32,8 +32,8 @@ add_library (games OBJECT
   goofspiel.cc
   goofspiel.h
   # Uncomment to enable Hanabi.
-  hanabi.cc
-  hanabi.h
+  #hanabi.cc
+  #hanabi.h
   havannah.cc
   havannah.h
   hex.cc
@@ -95,7 +95,7 @@ add_library (games OBJECT
 target_include_directories (games PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Uncomment to enable Hanabi.
-add_subdirectory (hanabi)
+#add_subdirectory (hanabi)
 
 # Uncomment to build the Ludii demo
 # add_subdirectory (ludii)
