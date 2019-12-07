@@ -258,9 +258,56 @@ void OpenSpielLandlordState::DoApplyAction(Action action)
       //   }
 
       RankMove move = action2Move5(action);
+      Player cur_player = CurrentPlayer();
+      if (move.Type() == LandlordMoveType::kThreeStraightAddOne &&
+        (move.EndRank()-move.StartRank()) == 4){
+          //5张三连带单
+          std::vector<int> mayAddPokers;
+          for (int i = 0; i <= kPokerJOKER_RANK; i++){
+            if (i < move.StartRank() || i > move.EndRank())
+            {
+                for(int i =0; i<  hands_[cur_player].first[i];i++){
+                    mayAddPokers.push_back(i);  //这样可以拆分其他牌
+                }
+            }else{
+                if (hands_[cur_player].first[i] == 4){
+                    mayAddPokers.push_back(i); //3顺中有炸弹，多余牌可以带。
+                }
+            }
+          }
+          if (mayAddPokers.size() == 5){
+            move = RankMove(move.Type(),move.StartRank(),move.EndRank(),
+                mayAddPokers);
+          }else{
+            move = RankMove(LandlordMoveType::kInvalid,0);
+          }          
+      }else if(move.Type() == LandlordMoveType::kThreeStraightAddPair &&
+        (move.EndRank() - move.StartRank()) == 3){
+          //4张三连带对
+          std::vector<int> mayAddPokers;
+          for (int i = 0; i <= kPokerA_RANK; i++){
+            if (i < move.StartRank() || i > move.EndRank())
+            {
+                for(int i =0; i<  hands_[cur_player].first[i];i++){
+                  if (hands_[cur_player].first[i] == 4){
+                      mayAddPokers.push_back(i);
+                      mayAddPokers.push_back(i);
+                  }else if(hands_[cur_player].first[i] == 2){
+                      mayAddPokers.push_back(i);
+                  }
+                }
+            }
+          }
+          if (mayAddPokers.size() == 4){
+            move = RankMove(move.Type(),move.StartRank(),move.EndRank(),
+                mayAddPokers);
+          }else{
+            move = RankMove(LandlordMoveType::kInvalid,0);
+          }  
+      }
+
       if (move.Type() != LandlordMoveType::kPass && move.Type() != kInvalid){
         RankCountsArray countsArray = rankMove2Counts(move);
-        Player cur_player = CurrentPlayer();
         playerValidActions_[cur_player]++;   //当前玩家的有效操作增加。
         if (move.Type() == kBomb || move.Type() == kKingBomb){
           bombCounts_++;   //炸弹数量增加1个。
@@ -392,15 +439,17 @@ void OpenSpielLandlordState::ObservationAsNormalizedVector(
   }
   offset += 3 * 60;
   //编码最近3个出牌action，put action 接近10万，使用17bit整数编码。
+  //编码最近3个出牌action，put action 约34238，使用16bit整数编码。
+  int actionBitLen = 16;
   for(int i = history_.size()-1; i > 4 && history_.size() - i <= 3; i--){
     Action lastAction = history_[i];
-    for (int j = 0; j < 17; j++){
+    for (int j = 0; j < actionBitLen; j++){
       int flag = 1 << j;
       flag = (lastAction & flag) >> j;
-      (*values)[offset+ (history_.size() - i - 1)*17 + j]  = flag;
+      (*values)[offset+ (history_.size() - i - 1)*actionBitLen + j]  = flag;
     }
   }
-  offset += 3 * 17;
+  offset += 3 * actionBitLen;
   //每个玩家已出牌，因为看了所有玩家牌，这个出牌可以先忽略。
 }
 

@@ -32,10 +32,10 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string("game", "landlord", "Name of the game.")
 flags.DEFINE_integer("num_players", 3, "Number of players.")
-flags.DEFINE_integer("num_episodes", 100,"Number of episodes.")
+flags.DEFINE_integer("num_episodes", 10000,"Number of episodes.")
 
 flags.DEFINE_integer(
-    "eval_every", 10,
+    "eval_every", 1000,
     "Episode frequency at which the DQN agents are evaluated.")
 flags.DEFINE_string("checkpoint_dir", "/tmp/landlord/",
                     "Directory to save/load the agent.")
@@ -86,7 +86,7 @@ def main_loop(unused_arg):
                 #replay_buffer_capacity=10,
                 hidden_layers_sizes=hidden_layers_sizes,
                 replay_buffer_capacity=replay_buffer_capacity,
-                batch_size=5) for player_id in range(3)
+                batch_size=128) for player_id in range(3)
         ]
         saver = tf.train.Saver()
         sess.run(tf.global_variables_initializer())

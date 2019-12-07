@@ -17,6 +17,16 @@ void chkMoveEncode(RankMove move)
 #else
     int action = move2Action5(move);
     RankMove decodedMove = action2Move5(action);
+    if (move.Type() == LandlordMoveType::kThreeStraightAddOne &&
+        (move.EndRank()-move.StartRank()) == 4 ||
+        move.Type() == LandlordMoveType::kThreeStraightAddPair &&
+        (move.EndRank() - move.StartRank()) == 3){
+            decodedMove = RankMove(decodedMove.Type(),decodedMove.StartRank(),decodedMove.EndRank(),
+                move.AddedRanks());
+            // for (auto addRank : move.AddedRanks()){
+            //     decodedMove.AddedRanks().push_back(addRank);
+            // }
+    }
     std::cout << move.toString() << " ====> " << decodedMove.toString() << std::endl;
     assert(move == decodedMove);
 #endif
@@ -58,7 +68,10 @@ void action_test1()
     chkMoveEncode(RankMove(kThreeStraightAddPair, kPoker3_RANK, 2, {5, 8, 10}));
 
     chkMoveEncode(RankMove(kThreeStraightAddOne, kPoker3_RANK, 2, {0, 7, 9}));
-    std::cout << "action counts encode decoding success ..." << std::endl;
+
+    chkMoveEncode(RankMove(kThreeStraightAddOne, kPoker3_RANK, 4, {5, 5,7,7, 9}));
+    chkMoveEncode(RankMove(kThreeStraightAddPair, kPoker3_RANK, 3, {5, 8,9, 10}));
+std::cout << "action counts encode decoding success ..." << std::endl;
 
     std::vector<std::array<int, 16>> handCombines = parseHandCombines(17);
     std::cout << "叫牌前的手牌rank组合总数：" << handCombines.size() << std::endl;
