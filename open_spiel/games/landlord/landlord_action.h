@@ -44,6 +44,11 @@
  *             Start: 4 bit
  *             End:4bit
  *             Added: 5*4 bit              主要是3连带牌，理论上最多5连
+ * 
+ * ALT5：利用方法4，通过action和move直接相互转换，找出所有可能的合法值，然后顺序编码。
+    ALT6： 取消连牌止牌信息，连牌长度信息用类型表示，这样类型数量加大（5-12单连，3-10双连，2-5三连）。类型（6bit）+起牌（4bit）带牌（5*4bit），共30bit。数量也还是偏大。
+    ALT7：Action 分为两类，SingleAction（执行一个action后，马上下一个用户进行操作），
+                  CompositeAction（BaseAction + KickerAction，baseAction执行完后，不切换用户，当前用户继续执行KickerAction，这样可以减少大量的action），
  */
 #ifndef __LANDLORD_ACTION_H__
 #define __LANDLORD_ACTION_H__
@@ -139,20 +144,19 @@ inline int move2Action4(RankMove &move)
 
     if (move.EndRank() > 0)
     {
-        action |= move.EndRank() << ACTION4_END_FLAG_LOC;
-    }
-
-    if (!((move.Type() == LandlordMoveType::kThreeStraightAddOne && move.EndRank() - move.StartRank() == 4) ||
-        (move.Type() == LandlordMoveType::kThreeStraightAddPair && move.EndRank() - move.StartRank() == 3))){
-        for (int i = 0; i < move.AddedRanks().size(); i++)
+        switch (move.Type())
         {
-            auto add = move.AddedRanks()[i];
-            if (add > 0)
-            {
-                action |= move.AddedRanks()[i] << ACTION4_ADD_FLAG_LOC + i * RANK4_FLAG_LEN;
-            }
+        case kSingle /* 单 */:
+        case kPair /* 对 */:
+        case LandlordMoveType::kThree:
+        case kBomb:
+            //无论是否设置了end，忽略，避免编码不一致。
+            break;
+        default:
+            action |= move.EndRank() << ACTION4_END_FLAG_LOC;
         }
     }
+
     return action;
 }
 
@@ -175,22 +179,7 @@ inline LandlordMoveType decodeActionType4(int action)
 inline RankMove decodeAdded(LandlordMoveType type,
                             int start, int end, int len, int action)
 {
-    RankMove move(kInvalid, 0);
-    std::vector<int> addedRanks;
-    if (!((type == LandlordMoveType::kThreeStraightAddOne && len == 5) ||
-        (type == LandlordMoveType::kThreeStraightAddPair && len == 4))){
-        if (len > 0)
-        {
-            for (int i = 0; i < len; i++)
-            {
-                int rank = decode4(action, ACTION4_ADD_FLAG_LOC + i * RANK4_FLAG_LEN, RANK4_FLAG);
-                addedRanks.push_back(rank);
-            }
-            move = RankMove(type, start, end, addedRanks);
-        }
-    }else{
-        move = RankMove(type, start, end, {});
-    }
+    RankMove move(type, start, end);
     return move;
 }
 inline RankMove action2Move4(int action)
@@ -213,26 +202,19 @@ inline RankMove action2Move4(int action)
         case kBomb: // 炸弹，包括癞子炸弹，需要结合牌值编码比较大小。
             move = RankMove(type, start);
             break;
-        case kKingBomb:      // 王炸，双王，多数玩法都是最大牌了。
-        case kStraight:      //顺子
-        case kTwoStraight:   //拖拉机，连对
-        case kThreeStraight: //飞机，没翅膀，3连牌
-            end = decode4(action, ACTION4_END_FLAG_LOC, RANK4_FLAG);
-            move = RankMove(type, start, end);
-            break;
+        case kKingBomb:             // 王炸，双王，多数玩法都是最大牌了。
+        case kStraight:             //顺子
+        case kTwoStraight:          //拖拉机，连对
+        case kThreeStraight:        //飞机，没翅膀，3连牌
         case kThreeAddSingle:       //三带一
         case kThreeAddPair:         //三带对
         case kThreeStraightAddOne:  // 飞机带单翅膀
         case kThreeStraightAddPair: // 飞机带双翅膀
+        case kFourAddTwoSingles:    //四带两单牌
+        case kFourAddTwoPairs:      //四带两对牌
             end = decode4(action, ACTION4_END_FLAG_LOC, RANK4_FLAG);
-            len = end - start + 1;
-            move = decodeAdded(type, start, end, len, action);
+            move = RankMove(type, start, end);
             break;
-        case kFourAddTwoSingles: //四带两单牌
-        case kFourAddTwoPairs:   //四带两对牌
-            end = decode4(action, ACTION4_END_FLAG_LOC, RANK4_FLAG);
-            len = 2;
-            move = decodeAdded(type, start, end, len, action);
         default:
             break;
         }
@@ -437,9 +419,11 @@ inline u_int64_t parseHandCombinesCounts(int counts)
     return handCombinesCounts;
 }
 
-inline std::vector<int> buildCombValue(std::vector<int> allValues,std::vector<int> comb){
-    std::vector<int>  combValue;
-    for (auto loc : comb){
+inline std::vector<int> buildCombValue(std::vector<int> allValues, std::vector<int> comb)
+{
+    std::vector<int> combValue;
+    for (auto loc : comb)
+    {
         combValue.push_back(allValues[loc]);
     }
     return combValue;
@@ -453,128 +437,168 @@ inline std::set<RankMove> buildAllValidMoves()
         switch (i)
         {
         case kSingle /* 单 */:
-            for(RankType rank = 0; rank <= kPokerJOKER_RANK; rank++){
-                validMoves.insert(RankMove(kSingle,rank));
+            for (RankType rank = 0; rank <= kPokerJOKER_RANK; rank++)
+            {
+                validMoves.insert(RankMove(kSingle, rank));
             }
             break;
         case kPair /* 对 */:
         case LandlordMoveType::kThree:
         case kBomb: // 炸弹，包括癞子炸弹，需要结合牌值编码比较大小。
-            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
-                validMoves.insert(RankMove((LandlordMoveType)i,rank));
+            for (RankType rank = 0; rank <= kPoker2_RANK; rank++)
+            {
+                validMoves.insert(RankMove((LandlordMoveType)i, rank));
             }
             break;
-        case kKingBomb:      // 王炸，双王，多数玩法都是最大牌了。
-            validMoves.insert(RankMove((LandlordMoveType)i,kPokerJoker_RANK,kPokerJOKER_RANK));
-        case kStraight:      //顺子
-            for (int j = 12; j >= 5; j--){
-                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
-                    validMoves.insert(RankMove((LandlordMoveType)i,k,k+j-1));
+        case kKingBomb: // 王炸，双王，多数玩法都是最大牌了。
+            validMoves.insert(RankMove((LandlordMoveType)i, kPokerJoker_RANK, kPokerJOKER_RANK));
+        case kStraight: //顺子
+            for (int j = 12; j >= 5; j--)
+            {
+                for (int k = 0; k + j - 1 <= kPokerA_RANK; k++)
+                {
+                    validMoves.insert(RankMove((LandlordMoveType)i, k, k + j - 1));
                 }
             }
             break;
-        case kTwoStraight:   //拖拉机，连对
-            for (int j = 10; j >= 3; j--){
-                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
-                    validMoves.insert(RankMove((LandlordMoveType)i,k,k+j-1));
+        case kTwoStraight: //拖拉机，连对
+            for (int j = 10; j >= 3; j--)
+            {
+                for (int k = 0; k + j - 1 <= kPokerA_RANK; k++)
+                {
+                    validMoves.insert(RankMove((LandlordMoveType)i, k, k + j - 1));
                 }
             }
             break;
         case kThreeStraight: //飞机，没翅膀，3连牌
-            for (int j = 5; j >= 2; j--){
-                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
-                    validMoves.insert(RankMove((LandlordMoveType)i,k,k+j-1));
+            for (int j = 5; j >= 2; j--)
+            {
+                for (int k = 0; k + j - 1 <= kPokerA_RANK; k++)
+                {
+                    validMoves.insert(RankMove((LandlordMoveType)i, k, k + j - 1));
                 }
             }
             break;
-        case kThreeAddSingle:       //三带一
-            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
-                for(RankType add = 0; add <= kPokerJOKER_RANK; add++){
-                    if (add != rank){
-                        validMoves.insert(RankMove((LandlordMoveType)i,rank,rank,{add}));
+        case kThreeAddSingle: //三带一
+            for (RankType rank = 0; rank <= kPoker2_RANK; rank++)
+            {
+                for (RankType add = 0; add <= kPokerJOKER_RANK; add++)
+                {
+                    if (add != rank)
+                    {
+                        validMoves.insert(RankMove((LandlordMoveType)i, rank, rank, {add}));
                     }
-                }                
+                }
             }
             break;
-        case kThreeAddPair:         //三带对
-            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
-                for(RankType add = 0; add <= kPoker2_RANK; add++){
-                    if (add != rank){
-                        validMoves.insert(RankMove((LandlordMoveType)i,rank,rank,{add}));
+        case kThreeAddPair: //三带对
+            for (RankType rank = 0; rank <= kPoker2_RANK; rank++)
+            {
+                for (RankType add = 0; add <= kPoker2_RANK; add++)
+                {
+                    if (add != rank)
+                    {
+                        validMoves.insert(RankMove((LandlordMoveType)i, rank, rank, {add}));
                     }
-                }                
+                }
             }
             break;
-        case kThreeStraightAddOne:  // 飞机带单翅膀
-            for (int j = 5; j >= 2; j--){
-                int samePokerCounts = std::min(4,j);
-                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+        case kThreeStraightAddOne: // 飞机带单翅膀
+            for (int j = 5; j >= 2; j--)
+            {
+                int samePokerCounts = std::min(4, j);
+                for (int k = 0; k + j - 1 <= kPokerA_RANK; k++)
+                {
                     std::vector<int> addRanks;
-                    for(int l = 0; l <= kPokerJOKER_RANK; l++){
-                        if ((l < k || l >k+j-1) && l < kPokerJoker_RANK){
-                            for (int m = 0; m < samePokerCounts; m++){
+                    for (int l = 0; l <= kPokerJOKER_RANK; l++)
+                    {
+                        if ((l < k || l > k + j - 1) && l < kPokerJoker_RANK)
+                        {
+                            for (int m = 0; m < samePokerCounts; m++)
+                            {
                                 addRanks.push_back(l);
-                            }                            
-                        }else{
+                            }
+                        }
+                        else
+                        {
                             addRanks.push_back(l);
                         }
                     }
-                    std::vector<std::vector<int>> combs = combine(addRanks.size(),j);
-                    for (auto comb : combs){
-                        validMoves.insert(RankMove((LandlordMoveType)i,k,k+j-1,buildCombValue(addRanks,comb)));
+                    std::vector<std::vector<int>> combs = combine(addRanks.size(), j);
+                    for (auto comb : combs)
+                    {
+                        validMoves.insert(RankMove((LandlordMoveType)i, k, k + j - 1, buildCombValue(addRanks, comb)));
                     }
                 }
             }
             break;
         case kThreeStraightAddPair: // 飞机带双翅膀
-            for (int j = 5; j >= 2; j--){
-                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+            for (int j = 5; j >= 2; j--)
+            {
+                for (int k = 0; k + j - 1 <= kPokerA_RANK; k++)
+                {
                     std::vector<int> addRanks;
-                    for(int l = 0; l <= kPoker2_RANK; l++){
-                        if (l < k || l >k+j-1){
-                            for (int m = 0; m < 2; m++){
+                    for (int l = 0; l <= kPoker2_RANK; l++)
+                    {
+                        if (l < k || l > k + j - 1)
+                        {
+                            for (int m = 0; m < 2; m++)
+                            {
                                 addRanks.push_back(l);
-                            }                            
+                            }
                         }
                     }
-                    std::vector<std::vector<int>> combs = combine(addRanks.size(),j);
-                    for (auto comb : combs){
-                        validMoves.insert(RankMove((LandlordMoveType)i,k,k+j-1,buildCombValue(addRanks,comb)));
+                    std::vector<std::vector<int>> combs = combine(addRanks.size(), j);
+                    for (auto comb : combs)
+                    {
+                        validMoves.insert(RankMove((LandlordMoveType)i, k, k + j - 1, buildCombValue(addRanks, comb)));
                     }
                 }
             }
             break;
         case kFourAddTwoSingles: //四带两单牌
-            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
-                 std::vector<int> addRanks;
-                for(int l = 0; l <= kPokerJOKER_RANK; l++){
-                    if ( l >= kPokerJoker_RANK){
+            for (RankType rank = 0; rank <= kPoker2_RANK; rank++)
+            {
+                std::vector<int> addRanks;
+                for (int l = 0; l <= kPokerJOKER_RANK; l++)
+                {
+                    if (l >= kPokerJoker_RANK)
+                    {
                         addRanks.push_back(l);
-                    }else if (l  != rank){
-                        for (int m = 0; m < 2; m++){
+                    }
+                    else if (l != rank)
+                    {
+                        for (int m = 0; m < 2; m++)
+                        {
                             addRanks.push_back(l);
-                        }                            
+                        }
                     }
                 }
-                std::vector<std::vector<int>> combs = combine(addRanks.size(),2);
-                for (auto comb : combs){
-                    validMoves.insert(RankMove((LandlordMoveType)i,rank,rank,buildCombValue(addRanks,comb)));
+                std::vector<std::vector<int>> combs = combine(addRanks.size(), 2);
+                for (auto comb : combs)
+                {
+                    validMoves.insert(RankMove((LandlordMoveType)i, rank, rank, buildCombValue(addRanks, comb)));
                 }
             }
             break;
-        case kFourAddTwoPairs:   //四带两对牌
-            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
-                 std::vector<int> addRanks;
-                for(int l = 0; l <= kPoker2_RANK; l++){
-                    if (l  != rank){
-                        for (int m = 0; m < 2; m++){
+        case kFourAddTwoPairs: //四带两对牌
+            for (RankType rank = 0; rank <= kPoker2_RANK; rank++)
+            {
+                std::vector<int> addRanks;
+                for (int l = 0; l <= kPoker2_RANK; l++)
+                {
+                    if (l != rank)
+                    {
+                        for (int m = 0; m < 2; m++)
+                        {
                             addRanks.push_back(l);
-                        }                            
+                        }
                     }
                 }
-                std::vector<std::vector<int>> combs = combine(addRanks.size(),2);
-                for (auto comb : combs){
-                    validMoves.insert(RankMove((LandlordMoveType)i,rank,rank,buildCombValue(addRanks,comb)));
+                std::vector<std::vector<int>> combs = combine(addRanks.size(), 2);
+                for (auto comb : combs)
+                {
+                    validMoves.insert(RankMove((LandlordMoveType)i, rank, rank, buildCombValue(addRanks, comb)));
                 }
             }
             break;
@@ -588,107 +612,131 @@ inline std::set<RankMove> buildAllValidMoves()
 inline std::vector<int> buildAllValidActions()
 {
     std::vector<int> actions = {0};
-    RankMove move(kInvalid,0);
+    RankMove move(kInvalid, 0);
     actions.push_back(move2Action4(move));
     for (int i = LandlordMoveType::kSingle; i <= kKingBomb; i++)
     {
         switch (i)
         {
         case kSingle /* 单 */:
-            for(RankType rank = 0; rank <= kPokerJOKER_RANK; rank++){
-                move =RankMove(kSingle,rank);
+            for (RankType rank = 0; rank <= kPokerJOKER_RANK; rank++)
+            {
+                move = RankMove(kSingle, rank);
                 actions.push_back(move2Action4(move));
             }
             break;
         case kPair /* 对 */:
         case LandlordMoveType::kThree:
         case kBomb: // 炸弹，包括癞子炸弹，需要结合牌值编码比较大小。
-            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
-                move = RankMove((LandlordMoveType)i,rank);
+            for (RankType rank = 0; rank <= kPoker2_RANK; rank++)
+            {
+                move = RankMove((LandlordMoveType)i, rank);
                 actions.push_back(move2Action4(move));
             }
             break;
-        case kKingBomb:      // 王炸，双王，多数玩法都是最大牌了。
-            move = RankMove((LandlordMoveType)i,kPokerJoker_RANK,kPokerJOKER_RANK);
+        case kKingBomb: // 王炸，双王，多数玩法都是最大牌了。
+            move = RankMove((LandlordMoveType)i, kPokerJoker_RANK, kPokerJOKER_RANK);
             actions.push_back(move2Action4(move));
             break;
-        case kStraight:      //顺子
-            for (int j = 12; j >= 5; j--){
-                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
-                    move = RankMove((LandlordMoveType)i,k,k+j-1);
+        case kStraight: //顺子
+            for (int j = 12; j >= 5; j--)
+            {
+                for (int k = 0; k + j - 1 <= kPokerA_RANK; k++)
+                {
+                    move = RankMove((LandlordMoveType)i, k, k + j - 1);
                     actions.push_back(move2Action4(move));
                 }
             }
             break;
-        case kTwoStraight:   //拖拉机，连对
-            for (int j = 10; j >= 3; j--){
-                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
-                    move = RankMove((LandlordMoveType)i,k,k+j-1);
+        case kTwoStraight: //拖拉机，连对
+            for (int j = 10; j >= 3; j--)
+            {
+                for (int k = 0; k + j - 1 <= kPokerA_RANK; k++)
+                {
+                    move = RankMove((LandlordMoveType)i, k, k + j - 1);
                     actions.push_back(move2Action4(move));
                 }
             }
             break;
         case kThreeStraight: //飞机，没翅膀，3连牌
-            for (int j = 5; j >= 2; j--){
-                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
-                    move =RankMove((LandlordMoveType)i,k,k+j-1);
+            for (int j = 5; j >= 2; j--)
+            {
+                for (int k = 0; k + j - 1 <= kPokerA_RANK; k++)
+                {
+                    move = RankMove((LandlordMoveType)i, k, k + j - 1);
                     actions.push_back(move2Action4(move));
                 }
             }
             break;
-        case kThreeAddSingle:       //三带一
-            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
-                for(RankType add = 0; add <= kPokerJOKER_RANK; add++){
-                    if (add != rank){
-                        move = RankMove((LandlordMoveType)i,rank,rank,{add});
+        case kThreeAddSingle: //三带一
+            for (RankType rank = 0; rank <= kPoker2_RANK; rank++)
+            {
+                for (RankType add = 0; add <= kPokerJOKER_RANK; add++)
+                {
+                    if (add != rank)
+                    {
+                        move = RankMove((LandlordMoveType)i, rank, rank, {add});
                         actions.push_back(move2Action4(move));
                     }
-                }                
+                }
             }
             break;
-        case kThreeAddPair:         //三带对
-            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
-                for(RankType add = 0; add <= kPoker2_RANK; add++){
-                    if (add != rank){
-                        move = RankMove((LandlordMoveType)i,rank,rank,{add});
+        case kThreeAddPair: //三带对
+            for (RankType rank = 0; rank <= kPoker2_RANK; rank++)
+            {
+                for (RankType add = 0; add <= kPoker2_RANK; add++)
+                {
+                    if (add != rank)
+                    {
+                        move = RankMove((LandlordMoveType)i, rank, rank, {add});
                         actions.push_back(move2Action4(move));
                     }
-                }                
+                }
             }
             break;
-        case kThreeStraightAddOne:  // 飞机带单翅膀
-            for (int j = 5; j >= 2; j--){
-                int samePokerCounts = std::min(4,j);
-                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
-                    if (j== 5){
+        case kThreeStraightAddOne: // 飞机带单翅膀
+            for (int j = 5; j >= 2; j--)
+            {
+                int samePokerCounts = std::min(4, j);
+                for (int k = 0; k + j - 1 <= kPokerA_RANK; k++)
+                {
+                    if (j == 5)
+                    {
                         //5*(3+1) = 20，一次出完手牌，这里可以特殊处理，不编码带牌。
                         //处理该特殊action时特殊处理。
                         //std::cout << "kThreeStraightAddOne  5,ignore addedRanks. " << k << " ---> " << (k+j-1) << std::endl;
-                        move = RankMove((LandlordMoveType)i,k,k+j-1,{});
+                        move = RankMove((LandlordMoveType)i, k, k + j - 1, {});
                         actions.push_back(move2Action4(move));
-                        std::cout << "kThreeStraightAddOne  5,ignore addedRanks. " << k << " ---> " << (k+j-1)  << " , action:"
-                            << move2Action4(move) << std::endl;
-                    }else{
+                        std::cout << "kThreeStraightAddOne  5,ignore addedRanks. " << k << " ---> " << (k + j - 1) << " , action:"
+                                  << move2Action4(move) << std::endl;
+                    }
+                    else
+                    {
                         std::vector<int> addRanks;
-                        for(int l = 0; l <= kPokerJOKER_RANK; l++){
-                            if ((l < k || l >k+j-1) && l < kPokerJoker_RANK){
-                                for (int m = 0; m < samePokerCounts; m++){
+                        for (int l = 0; l <= kPokerJOKER_RANK; l++)
+                        {
+                            if ((l < k || l > k + j - 1) && l < kPokerJoker_RANK)
+                            {
+                                for (int m = 0; m < samePokerCounts; m++)
+                                {
                                     addRanks.push_back(l);
-                                }                            
-                            }else{
+                                }
+                            }
+                            else
+                            {
                                 addRanks.push_back(l);
                             }
                         }
-                        std::vector<std::vector<int>> combs = combine(addRanks.size(),j);
+                        std::vector<std::vector<int>> combs = combine(addRanks.size(), j);
                         std::set<std::vector<int>> addRanksByComb;
-                        for (auto comb : combs){
-                        addRanksByComb.insert(buildCombValue(addRanks,comb));
+                        for (auto comb : combs)
+                        {
+                            addRanksByComb.insert(buildCombValue(addRanks, comb));
                         }
-                        std::cout << "kThreeStraightAddOne combs.size: " << combs.size() << " , addRanks.size: " << 
-                                addRanks.size() <<  " , straight.size: " << j << " , uniqAddRanks.size: " << 
-                                addRanksByComb.size() << std::endl;
-                        for (auto ranks : addRanksByComb){
-                            move = RankMove((LandlordMoveType)i,k,k+j-1,ranks);
+                        std::cout << "kThreeStraightAddOne combs.size: " << combs.size() << " , addRanks.size: " << addRanks.size() << " , straight.size: " << j << " , uniqAddRanks.size: " << addRanksByComb.size() << std::endl;
+                        for (auto ranks : addRanksByComb)
+                        {
+                            move = RankMove((LandlordMoveType)i, k, k + j - 1, ranks);
                             actions.push_back(move2Action4(move));
                         }
                     }
@@ -696,35 +744,43 @@ inline std::vector<int> buildAllValidActions()
             }
             break;
         case kThreeStraightAddPair: // 飞机带双翅膀
-             //最多4连 4 *（3+2）= 20
-            for (int j = 4; j >= 2; j--){
-                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
-                    if (j== 4){
+                                    //最多4连 4 *（3+2）= 20
+            for (int j = 4; j >= 2; j--)
+            {
+                for (int k = 0; k + j - 1 <= kPokerA_RANK; k++)
+                {
+                    if (j == 4)
+                    {
                         //4*(3+2) = 20，一次出完手牌，这里可以特殊处理，不编码带牌。
                         //处理该特殊action时特殊处理。
-                        move = RankMove((LandlordMoveType)i,k,k+j-1,{});
+                        move = RankMove((LandlordMoveType)i, k, k + j - 1, {});
                         actions.push_back(move2Action4(move));
-                        std::cout << "kThreeStraightAddPair  4,ignore addedRanks. " << k << " ---> " << (k+j-1)  << " , action:"
-                            << move2Action4(move) << std::endl;
-                    }else{
+                        std::cout << "kThreeStraightAddPair  4,ignore addedRanks. " << k << " ---> " << (k + j - 1) << " , action:"
+                                  << move2Action4(move) << std::endl;
+                    }
+                    else
+                    {
                         std::vector<int> addRanks;
-                        for(int l = 0; l <= kPoker2_RANK; l++){
-                            if (l < k || l >k+j-1){
-                                for (int m = 0; m < 2; m++){
+                        for (int l = 0; l <= kPoker2_RANK; l++)
+                        {
+                            if (l < k || l > k + j - 1)
+                            {
+                                for (int m = 0; m < 2; m++)
+                                {
                                     addRanks.push_back(l);
-                                }                            
+                                }
                             }
                         }
-                        std::vector<std::vector<int>> combs = combine(addRanks.size(),j);
+                        std::vector<std::vector<int>> combs = combine(addRanks.size(), j);
                         std::set<std::vector<int>> addRanksByComb;
-                        for (auto comb : combs){
-                        addRanksByComb.insert(buildCombValue(addRanks,comb));
+                        for (auto comb : combs)
+                        {
+                            addRanksByComb.insert(buildCombValue(addRanks, comb));
                         }
-                        std::cout << "kThreeStraightAddPair combs.size: " << combs.size() << " , addRanks.size: " << 
-                                addRanks.size() <<  " , straight.size: " << j << " , uniqAddRanks.size: " << 
-                                addRanksByComb.size() << std::endl;
-                        for (auto ranks : addRanksByComb){
-                            move = RankMove((LandlordMoveType)i,k,k+j-1,ranks);
+                        std::cout << "kThreeStraightAddPair combs.size: " << combs.size() << " , addRanks.size: " << addRanks.size() << " , straight.size: " << j << " , uniqAddRanks.size: " << addRanksByComb.size() << std::endl;
+                        for (auto ranks : addRanksByComb)
+                        {
+                            move = RankMove((LandlordMoveType)i, k, k + j - 1, ranks);
                             actions.push_back(move2Action4(move));
                         }
                     }
@@ -732,53 +788,63 @@ inline std::vector<int> buildAllValidActions()
             }
             break;
         case kFourAddTwoSingles: //四带两单牌
-            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
-                 std::vector<int> addRanks;
-                for(int l = 0; l <= kPokerJOKER_RANK; l++){
-                    if ( l >= kPokerJoker_RANK){
+            for (RankType rank = 0; rank <= kPoker2_RANK; rank++)
+            {
+                std::vector<int> addRanks;
+                for (int l = 0; l <= kPokerJOKER_RANK; l++)
+                {
+                    if (l >= kPokerJoker_RANK)
+                    {
                         addRanks.push_back(l);
-                    }else if (l  != rank){
-                        for (int m = 0; m < 2; m++){
+                    }
+                    else if (l != rank)
+                    {
+                        for (int m = 0; m < 2; m++)
+                        {
                             addRanks.push_back(l);
-                        }                            
+                        }
                     }
                 }
-                std::vector<std::vector<int>> combs = combine(addRanks.size(),2);
+                std::vector<std::vector<int>> combs = combine(addRanks.size(), 2);
                 std::set<std::vector<int>> addRanksByComb;
-                    for (auto comb : combs){
-                       addRanksByComb.insert(buildCombValue(addRanks,comb));
-                    }
-                    std::cout << "combs.size: " << combs.size() << " , addRanks.size: " << 
-                            addRanks.size() <<  " , kFourAddTwoSingles, uniqAddRanks.size: " << 
-                            addRanksByComb.size() << std::endl;
-                    for (auto ranks : addRanksByComb){
-                        move = RankMove((LandlordMoveType)i,rank,rank,ranks);
-                        actions.push_back(move2Action4(move));
-                    }
+                for (auto comb : combs)
+                {
+                    addRanksByComb.insert(buildCombValue(addRanks, comb));
+                }
+                std::cout << "combs.size: " << combs.size() << " , addRanks.size: " << addRanks.size() << " , kFourAddTwoSingles, uniqAddRanks.size: " << addRanksByComb.size() << std::endl;
+                for (auto ranks : addRanksByComb)
+                {
+                    move = RankMove((LandlordMoveType)i, rank, rank, ranks);
+                    actions.push_back(move2Action4(move));
+                }
             }
             break;
-        case kFourAddTwoPairs:   //四带两对牌
-            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
-                 std::vector<int> addRanks;
-                for(int l = 0; l <= kPoker2_RANK; l++){
-                    if (l  != rank){
-                        for (int m = 0; m < 2; m++){
+        case kFourAddTwoPairs: //四带两对牌
+            for (RankType rank = 0; rank <= kPoker2_RANK; rank++)
+            {
+                std::vector<int> addRanks;
+                for (int l = 0; l <= kPoker2_RANK; l++)
+                {
+                    if (l != rank)
+                    {
+                        for (int m = 0; m < 2; m++)
+                        {
                             addRanks.push_back(l);
-                        }                            
+                        }
                     }
                 }
-                std::vector<std::vector<int>> combs = combine(addRanks.size(),2);
+                std::vector<std::vector<int>> combs = combine(addRanks.size(), 2);
                 std::set<std::vector<int>> addRanksByComb;
-                    for (auto comb : combs){
-                       addRanksByComb.insert(buildCombValue(addRanks,comb));
-                    }
-                    std::cout << "combs.size: " << combs.size() << " , addRanks.size: " << 
-                            addRanks.size() <<  " , fourAddTwoPair , uniqAddRanks.size: " << 
-                            addRanksByComb.size() << std::endl;
-                    for (auto ranks : addRanksByComb){
-                        move = RankMove((LandlordMoveType)i,rank,rank,ranks);
-                        actions.push_back(move2Action4(move));
-                    }
+                for (auto comb : combs)
+                {
+                    addRanksByComb.insert(buildCombValue(addRanks, comb));
+                }
+                std::cout << "combs.size: " << combs.size() << " , addRanks.size: " << addRanks.size() << " , fourAddTwoPair , uniqAddRanks.size: " << addRanksByComb.size() << std::endl;
+                for (auto ranks : addRanksByComb)
+                {
+                    move = RankMove((LandlordMoveType)i, rank, rank, ranks);
+                    actions.push_back(move2Action4(move));
+                }
             }
             break;
         default:
@@ -798,6 +864,29 @@ std::vector<int> initUserActions();
 LandlordMoveType decodeActionType5(int action);
 RankMove action2Move5(int action);
 int move2Action5(RankMove &move);
+
+/**
+ *  通过最近测试，action数量不能过大，所以重新组织
+ *  ALT7：Action 分为两类，SimpleAction（执行一个action后，马上下一个用户进行操作），
+ *                 CompositeAction（BaseAction + KickerAction，baseAction执行完后，不切换用户，
+ *                当前用户继续执行KickerAction，这样可以减少大量的action），
+ * 
+ */
+constexpr int SingleActionBase = 0;
+constexpr int SingleActionCounts = 15;
+constexpr int PairActionBase = SingleActionBase + SingleActionCounts;
+constexpr int PairActionCounts = 13;
+
+constexpr int PlayActionBase = 4;
+constexpr int PlayPassAction = PlayActionBase;
+
+std::vector<int> buildAllValidActions7();
+std::vector<int> initUserActions7();
+LandlordMoveType decodeActionType7(int action);
+RankMove action2Move7(int action);
+int move2Action7(RankMove &move);
+
+std::tuple<bool, LandlordMoveType, int> chkCompositeAction(RankMove move);
 
 } // namespace landlord_learning_env
 #endif // ACTION

@@ -48,6 +48,7 @@ std::string rankCountsArray2String(RankCountsArray &countsArray);
 int getPokersCounts(RankCountsArray &countsArray);
 RankCountsArray rankMove2Counts(RankMove &move);
 RankMove buildMoveByPokersCounts(RankCountsArray &countsArray);
+std::vector<RankMove> parseKickerByType(RankCountsArray &rankCounts, LandlordMoveType type);
 } // namespace landlord_learning_env
 
 #endif //__LANDLORD_PARSER_H__

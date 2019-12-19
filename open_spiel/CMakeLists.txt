@@ -16,6 +16,7 @@ if(APPLE)
   set (CMAKE_CXX_FLAGS "-w -undefined dynamic_lookup")
 else()
   set (CMAKE_CXX_FLAGS "-g -Werror")
+  #set (CMAKE_CXX_FLAGS "-Werror")
 endif()
 
 # Position-independent code is needed for Python extension modules.

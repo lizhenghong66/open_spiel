@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 from open_spiel.python.algorithms import dqn
+#from open_spiel.python.algorithms import dqn_np as dqn
 
 import logging
 from absl import app
@@ -32,7 +33,8 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string("game", "landlord", "Name of the game.")
 flags.DEFINE_integer("num_players", 3, "Number of players.")
-flags.DEFINE_integer("num_episodes", 10000,"Number of episodes.")
+flags.DEFINE_integer("num_episodes", 100000,"Number of episodes.")
+#flags.DEFINE_integer("num_episodes", 100,"Number of episodes.")
 
 flags.DEFINE_integer(
     "eval_every", 1000,
@@ -67,7 +69,7 @@ def main_loop(unused_arg):
     state_size = env.observation_spec()["info_state"][0]
     num_actions = env.action_spec()["num_actions"]
 
-    hidden_layers_sizes = [32, 32]
+    hidden_layers_sizes = [512, 512]
     replay_buffer_capacity = int(1e4)
     train_episodes = FLAGS.num_episodes
     loss_report_interval = 1000
@@ -100,7 +102,7 @@ def main_loop(unused_arg):
         for ep in range(train_episodes):
             #if ep and ep % loss_report_interval == 0:
             if (ep + 1) % FLAGS.eval_every == 0:
-                logging.info("[%s/%s] DQN loss: %s", ep, train_episodes, agents[0].loss)
+                logging.info("[%s/%s] DQN loss: %s   %s  %s", ep, train_episodes, agents[0].loss, agents[1].loss, agents[2].loss)
                 saver.save(sess, FLAGS.checkpoint_dir, ep)
                 
             time_step = env.reset()
@@ -114,7 +116,7 @@ def main_loop(unused_arg):
                 else:
                     agents_output = [agent.step(time_step) for agent in agents]
                     action_list = [agent_output.action for agent_output in agents_output]
-                print_iteration(time_step, current_player, action_list)
+                #print_iteration(time_step, current_player, action_list)
                 time_step = env.step(action_list)
 
             # Episode is over, step all agents with final info state.

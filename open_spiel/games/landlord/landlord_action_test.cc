@@ -73,12 +73,12 @@ void action_test1()
     chkMoveEncode(RankMove(kThreeStraightAddPair, kPoker3_RANK, 3, {5, 8,9, 10}));
 std::cout << "action counts encode decoding success ..." << std::endl;
 
-    std::vector<std::array<int, 16>> handCombines = parseHandCombines(17);
-    std::cout << "叫牌前的手牌rank组合总数：" << handCombines.size() << std::endl;
-    disp(handCombines);
+    // std::vector<std::array<int, 16>> handCombines = parseHandCombines(17);
+    // std::cout << "叫牌前的手牌rank组合总数：" << handCombines.size() << std::endl;
+    // disp(handCombines);
 
-    uint64_t combineCounts = parseHandCombinesCounts(20);
-    std::cout << "地主的手牌rank组合总数：" << std::to_string(combineCounts) << std::endl;
+    // uint64_t combineCounts = parseHandCombinesCounts(20);
+    // std::cout << "地主的手牌rank组合总数：" << std::to_string(combineCounts) << std::endl;
 
     //combineCounts = parseHandCombinesCounts(handCombines,17);
     //std::cout << "三家手牌组合总数："  << combineCounts << std::endl;
@@ -227,13 +227,32 @@ void action_test5()
               << "秒" << std::endl;
 }
 
+void action_test6(){
+    std::vector<int> actions = buildAllValidActions7();
+    for(int i = 0; i < actions.size(); i++){
+        RankMove move = action2Move4(actions[i]);
+        std::cout << i << " : "  << actions[i] << " <===> " << move.toString() << std::endl;
+        std::tuple<bool,LandlordMoveType,int>  compAction = chkCompositeAction(move);
+        // std::tuple_element<0, decltype(compAction)>::type isComposite = std::get<0>(compAction); 
+        // std::tuple_element<1, decltype(compAction)>::type kickerType = std::get<1>(compAction); 
+        // std::tuple_element<2, decltype(compAction)>::type kickerLen = std::get<2>(compAction); 
+        auto isComposite = std::get<0>(compAction); 
+        auto kickerType = std::get<1>(compAction); 
+        auto kickerLen = std::get<2>(compAction); 
+        std::cout << isComposite << "," << kickerType << "," << kickerLen << std::endl;
+        std::cout << std::get<0>(compAction) << "," << std::get<1>(compAction) << "," << std::get<2>(compAction) << std::endl;
+    }
+    std::cout << " total action counts: " << actions.size() << std::endl;
+
+}
 } //namespace landlord_learning_env
 
 int main(int argc, char **argv)
 {
-    landlord_learning_env::action_test1();
+    //landlord_learning_env::action_test1();
     //landlord_learning_env::action_test2();
     //landlord_learning_env::action_test3();
     //landlord_learning_env::action_test4();
-    landlord_learning_env::action_test5();
+    //landlord_learning_env::action_test5();
+    landlord_learning_env::action_test6();
 }

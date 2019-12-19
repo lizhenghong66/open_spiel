@@ -241,7 +241,7 @@ std::vector<int> initUserActions()
     return actions;
 }
 
-std::vector<int> AllValidUserActions = initUserActions();
+std::vector<int> AllValidUserActions = initUserActions7();
 int toAction4(int action){
     RankMove move(kInvalid,0);
     int action4 = move2Action4(move);
@@ -275,4 +275,174 @@ int move2Action5(RankMove &move){
     return action5;
 }
 
+/////////////////////////////////////////////////////
+//*******************************************
+/**
+ * 初始化新的Action编码
+ */
+std::vector<int> buildAllValidActions7()
+{
+    std::vector<int> actions = {};
+    RankMove move(kPass,0);
+    actions.push_back(move2Action4(move));
+    for (int i = LandlordMoveType::kSingle; i <= kKingBomb; i++)
+    {
+        switch (i)
+        {
+        case kSingle /* 单 */:
+            for(RankType rank = 0; rank <= kPokerJOKER_RANK; rank++){
+                move =RankMove(kSingle,rank);
+                actions.push_back(move2Action4(move));
+            }
+            break;
+        case kPair /* 对 */:
+        case LandlordMoveType::kThree:
+        case kBomb: // 炸弹，包括癞子炸弹，需要结合牌值编码比较大小。
+            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
+                move = RankMove((LandlordMoveType)i,rank);
+                actions.push_back(move2Action4(move));
+            }
+            break;
+        case kThreeAddSingle:       //三带一
+        case kThreeAddPair:         //三带对
+        case kFourAddTwoSingles: //四带两单牌
+        case kFourAddTwoPairs: //四带两单牌
+            for(RankType rank = 0; rank <= kPoker2_RANK; rank++){
+                move = RankMove((LandlordMoveType)i,rank,rank);
+                actions.push_back(move2Action4(move));
+            }
+            break;
+        case kKingBomb:      // 王炸，双王，多数玩法都是最大牌了。
+            move = RankMove((LandlordMoveType)i,kPokerJoker_RANK,kPokerJOKER_RANK);
+            actions.push_back(move2Action4(move));
+            break;
+        case kStraight:      //顺子
+            for (int j = 12; j >= 5; j--){
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                    move = RankMove((LandlordMoveType)i,k,k+j-1);
+                    actions.push_back(move2Action4(move));
+                }
+            }
+            break;
+        case kTwoStraight:   //拖拉机，连对
+            for (int j = 10; j >= 3; j--){
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                    move = RankMove((LandlordMoveType)i,k,k+j-1);
+                    actions.push_back(move2Action4(move));
+                }
+            }
+            break;
+        case kThreeStraight: //飞机，没翅膀，3连牌
+            //最多6连 6 * 3= 18
+            for (int j = 6; j >= 2; j--){
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                    move =RankMove((LandlordMoveType)i,k,k+j-1);
+                    actions.push_back(move2Action4(move));
+                }
+            }
+            break;
+        case kThreeStraightAddOne:  // 飞机带单翅膀
+            //最多5连 5 *（3+1）= 20
+            for (int j = 5; j >= 2; j--){
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                        move = RankMove((LandlordMoveType)i,k,k+j-1,{});
+                        actions.push_back(move2Action4(move));
+                }
+            }
+            break;
+        case kThreeStraightAddPair: // 飞机带双翅膀
+             //最多4连 4 *（3+2）= 20
+            for (int j = 4; j >= 2; j--){
+                for(int k = 0; k+j -1 <=kPokerA_RANK;k++){
+                        move = RankMove((LandlordMoveType)i,k,k+j-1,{});
+                        actions.push_back(move2Action4(move));    
+                }
+            }
+            break;
+        default:
+            break;
+        }
+    }
+    return actions;
+}
+
+std::vector<int> initUserActions7()
+{
+    std::vector<int> actions = buildAllValidActions7();
+    return actions;
+}
+
+int action7toAction4(int action){
+    action -= PlayActionBase;
+    RankMove move(kInvalid,0);
+    int action4 = move2Action4(move);
+    if (action >= 0 && action < AllValidUserActions.size()){
+        action4 = AllValidUserActions[action];
+    }
+    return action4;
+}
+LandlordMoveType decodeActionType7(int action){
+    int action4 = action7toAction4(action);
+    return decodeActionType4(action4);
+}
+RankMove action2Move7(int action){
+    int action4 = action7toAction4(action);
+    return action2Move4(action4);
+}
+int move2Action7(RankMove &move){
+    int action7 = -1;
+    int action4 = move2Action4(move);
+    auto itr = std::find(AllValidUserActions.begin(),AllValidUserActions.end(),action4);
+    if (itr != AllValidUserActions.end()) {
+       action7 = std::distance(AllValidUserActions.begin(), itr);
+    }else{
+        int count = 0;
+        for (auto action : AllValidUserActions){
+            std::cout << count++ << " : " << action << " ===> " << action2Move4(action).toString() << std::endl;
+        }
+        std::cout << "unrecognized move:" << move.toString()  << " ," << action4 << std::endl;
+        exit(-1);
+    } 
+    return action7 + PlayActionBase;
+}
+
+std::tuple<bool,LandlordMoveType,int> chkCompositeAction(RankMove move){
+    bool isComposite = false;
+    LandlordMoveType type = kPass;
+    int len = 0;
+    switch (move.Type()){
+        case kThreeAddSingle:
+            isComposite = true;
+            type = kSingle;
+            len = 1;
+            break;
+        case kThreeAddPair:
+            isComposite = true;
+            type = kPair;
+            len = 1;
+            break;
+        case kFourAddTwoSingles:
+            isComposite = true;
+            type = kSingle;
+            len = 2;
+            break;
+        case kFourAddTwoPairs:
+            isComposite = true;
+            type = kPair;
+            len = 2;
+            break;
+        
+        case kThreeStraightAddOne:
+            isComposite = true;
+            type = kSingle;
+            len = move.EndRank() - move.StartRank() +1;
+            break;
+        case kThreeStraightAddPair:
+            isComposite = true;
+            type = kPair;
+            len = move.EndRank() - move.StartRank() +1;
+            break;
+    }
+    return std::make_tuple(isComposite,type,len);
+}
 } // namespace landlord_learning_env

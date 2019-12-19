@@ -146,11 +146,62 @@ void updatedAddPokers(LandlordMoveType type, int start, int end, int len,
             addPokerSets.insert(addPokers);
         }
 
-        for(auto addPokers : addPokerSets){
+        for (auto addPokers : addPokerSets)
+        {
             allLegalActions[type].push_back(
                 RankMove(type, start, end, addPokers));
         }
     }
+}
+
+int countMayAddCounts(int mainBaseCount, RankType startRank, int len, RankCountsArray &rankCounts, bool isSingle)
+{
+    int count = 0;
+    int base = isSingle ? 1 : 2;
+
+    for (int i = 0; i <= kPokerJOKER_RANK; i++)
+    {
+        if (i < startRank || i > startRank + len - 1)
+        {
+            count += rankCounts[i] / base;
+        }
+        else if (rankCounts[i] - mainBaseCount > 0)
+        {
+            count += (rankCounts[i] - mainBaseCount) / 2;
+        }
+    }
+    return count;
+}
+
+bool chkAddedPokers(LandlordMoveType mainType, RankType startRank, int len, RankCountsArray &rankCounts)
+{
+    int count = 0;
+    switch (mainType)
+    {
+    case kThreeAddSingle /* 3带单 */:
+        /* code */
+        count = countMayAddCounts(3, startRank, len, rankCounts, true);
+        break;
+    case kThreeAddPair /* 3带对 */:
+        count = countMayAddCounts(3, startRank, len, rankCounts, false);
+        break;
+    case kFourAddTwoSingles /* 4带单 */:
+        count = countMayAddCounts(4, startRank, len, rankCounts, true);
+        break;
+    case kFourAddTwoPairs /* 4带对 */:
+        count = countMayAddCounts(4, startRank, len, rankCounts, false);
+        break;
+    case kThreeStraightAddOne /* 3顺带单 */:
+        count = countMayAddCounts(3, startRank, len, rankCounts, true);
+        break;
+    case kThreeStraightAddPair /* 3顺带对 */:
+        count = countMayAddCounts(3, startRank, len, rankCounts, false);
+        break;
+    default:
+        break;
+    }
+    //std::cout << "===chkAddedPokers===," << moveType2String(mainType) << "(" << std::to_string(mainType) << ") can added counts:" << count << std::endl;
+    return (count >= len ? true : false);
 }
 
 RankMoveByType parseByType(RankCountsArray &rankCounts)
@@ -170,7 +221,7 @@ RankMoveByType parseByType(RankCountsArray &rankCounts)
             {
                 //有王炸
                 kingbomb.push_back(i);
-                allLegalActions[kKingBomb].push_back(RankMove(kKingBomb, i-1,i));
+                allLegalActions[kKingBomb].push_back(RankMove(kKingBomb, i - 1, i));
             }
         }
         if (rankCounts[i] > 1)
@@ -212,87 +263,45 @@ RankMoveByType parseByType(RankCountsArray &rankCounts)
         allLegalActions[kThreeStraight].push_back(RankMove(kThreeStraight, continue3.first, continue3.second));
 
         //3顺带单
-        std::vector<int> mayAddPokers;
-        int len = continue3.second - continue3.first + 1;
-        for (auto single : singles)
+        if (chkAddedPokers(kThreeStraightAddOne, continue3.first, continue3.second - continue3.first + 1, rankCounts))
         {
-            if (single < continue3.first || single > continue3.second)
-            {
-                for(int i =0; i<  rankCounts[single];i++){
-                    mayAddPokers.push_back(single);  //这样可以拆分其他牌
-                }
-            }else{
-                if (rankCounts[single] == 4){
-                    mayAddPokers.push_back(single); //3顺中有炸弹，多余牌可以带。
-                }
-            }
+            allLegalActions[kThreeStraightAddOne].push_back(RankMove(kThreeStraightAddOne, continue3.first, continue3.second));
         }
-        updatedAddPokers(kThreeStraightAddOne, continue3.first, continue3.second, len, mayAddPokers, allLegalActions);
-
         //3顺带对
-        mayAddPokers.resize(0);
-        for (auto pair : pairs)
+        if (chkAddedPokers(kThreeStraightAddPair, continue3.first, continue3.second - continue3.first + 1, rankCounts))
         {
-            if (pair < continue3.first || pair > continue3.second)
-            {
-                mayAddPokers.push_back(pair);
-                if (rankCounts[pair] == 4){
-                    mayAddPokers.push_back(pair);
-                }
-            }
+            allLegalActions[kThreeStraightAddPair].push_back(RankMove(kThreeStraightAddPair, continue3.first, continue3.second));
         }
-        updatedAddPokers(kThreeStraightAddPair, continue3.first, continue3.second, len, mayAddPokers, allLegalActions);
     }
     //然后处理带牌情况，3带，4带，
     //处理3带1
     for (auto three : threes)
     {
         //处理3带单
-        std::vector<int> mayAddPokers = singles;
-        int len = 1;
-        deletePokerFromPokers(mayAddPokers, three);
-        updatedAddPokers(kThreeAddSingle, three, three, len, mayAddPokers, allLegalActions);
+        if (chkAddedPokers(kThreeAddSingle, three, 1, rankCounts))
+        {
+            allLegalActions[kThreeAddSingle].push_back(RankMove(kThreeAddSingle, three, three));
+        }
 
         //处理3带对
-        mayAddPokers = pairs;
-        deletePokerFromPokers(mayAddPokers, three);
-        updatedAddPokers(kThreeAddPair, three, three, len, mayAddPokers, allLegalActions);
+        if (chkAddedPokers(kThreeAddPair, three, 1, rankCounts))
+        {
+            allLegalActions[kThreeAddPair].push_back(RankMove(kThreeAddPair, three, three));
+        }
     }
     //处理4带2
     for (auto bomb : bombs)
     {
         //处理4带单
-        // std::vector<int> mayAddPokers = singles;
-        // int len = 2;
-        // deletePokerFromPokers(mayAddPokers, bomb);
-        std::vector<int> mayAddPokers;
-        int len = 2;
-        for (auto single : singles)
+        if (chkAddedPokers(kFourAddTwoSingles, bomb, 2, rankCounts))
         {
-            if (single != bomb)
-            {
-                for(int i =0; i<  rankCounts[single];i++){
-                    mayAddPokers.push_back(single);  //这样可以拆分其他牌
-                }
-            }
+            allLegalActions[kFourAddTwoSingles].push_back(RankMove(kFourAddTwoSingles, bomb, bomb));
         }
-        updatedAddPokers(kFourAddTwoSingles, bomb, bomb, len, mayAddPokers, allLegalActions);
-
         //处理4带对
-        // mayAddPokers = pairs;
-        // deletePokerFromPokers(mayAddPokers, bomb);
-        mayAddPokers.resize(0);
-        for (auto pair : pairs)
+        if (chkAddedPokers(kFourAddTwoPairs, bomb, 2, rankCounts))
         {
-            if (pair != bomb)
-            {
-                mayAddPokers.push_back(pair);
-                if (rankCounts[pair] == 4){
-                    mayAddPokers.push_back(pair);
-                }
-            }
+            allLegalActions[kFourAddTwoPairs].push_back(RankMove(kFourAddTwoPairs, bomb, bomb));
         }
-        updatedAddPokers(kFourAddTwoPairs, bomb, bomb, len, mayAddPokers, allLegalActions);
     }
     return allLegalActions;
 }
@@ -422,8 +431,10 @@ RankMove buildMoveByPokersCounts(RankCountsArray &countsArray)
         {
             counts += countsArray[i];
 
-            if (isSameRankCounts && validRanks.size() > 0 ){
-                if (countsArray[i] != validRanks[validRanks.size()-1].second){
+            if (isSameRankCounts && validRanks.size() > 0)
+            {
+                if (countsArray[i] != validRanks[validRanks.size() - 1].second)
+                {
                     isSameRankCounts = false;
                 }
             }
@@ -453,7 +464,8 @@ RankMove buildMoveByPokersCounts(RankCountsArray &countsArray)
                         threeStraights.push_back(std::make_pair(threeStart, threeEnd));
                     }
                 }
-            }else
+            }
+            else
             {
                 if (i > 0 && countsArray[i - 1] >= 3)
                 {
@@ -466,7 +478,9 @@ RankMove buildMoveByPokersCounts(RankCountsArray &countsArray)
                 threeEnd = -1;
                 threeStart = -1;
             }
-        }else if (i > 0 && countsArray[i - 1] >= 3) {
+        }
+        else if (i > 0 && countsArray[i - 1] >= 3)
+        {
             threeEnd = i - 1;
             if (threeStart >= 0 && threeStart < threeEnd)
             {
@@ -476,47 +490,68 @@ RankMove buildMoveByPokersCounts(RankCountsArray &countsArray)
             threeStart = -1;
         }
     }
-    if (threeStraights.size() == 1){
+    if (threeStraights.size() == 1)
+    {
         //3顺或3顺带1，是最复杂的组合，特殊处理。
-        if (counts % 3 == 0 && (validRanks[validRanks.size() -1].first -  validRanks[0].first + 1) == counts/3){
+        if (counts % 3 == 0 && (validRanks[validRanks.size() - 1].first - validRanks[0].first + 1) == counts / 3)
+        {
             //3顺
-            move = RankMove(kThreeStraight,validRanks[0].first,validRanks[validRanks.size() -1].first);
-        }else if (counts % 4 == 0){
+            move = RankMove(kThreeStraight, validRanks[0].first, validRanks[validRanks.size() - 1].first);
+        }
+        else if (counts % 4 == 0)
+        {
             //3顺带单
             std::vector<int> added;
-            for (auto rank:validRanks){
-                if (rank.first < threeStraights[0].first || rank.first > threeStraights[0].second){
-                    if (rank.second == 1){
+            for (auto rank : validRanks)
+            {
+                if (rank.first < threeStraights[0].first || rank.first > threeStraights[0].second)
+                {
+                    if (rank.second == 1)
+                    {
                         added.push_back(rank.first);
                     }
-                }else{
-                    if (rank.second == 4){
+                }
+                else
+                {
+                    if (rank.second == 4)
+                    {
                         added.push_back(rank.first);
                     }
                 }
             }
-            if (added.size() ==  threeStraights[0].second -  threeStraights[0].first + 1){
-                move = RankMove(kThreeStraightAddOne,threeStraights[0].first,threeStraights[0].second,added);
+            if (added.size() == threeStraights[0].second - threeStraights[0].first + 1)
+            {
+                move = RankMove(kThreeStraightAddOne, threeStraights[0].first, threeStraights[0].second, added);
             }
-        }else if (counts % 5 == 0){
+        }
+        else if (counts % 5 == 0)
+        {
             //3顺带对
             std::vector<int> added;
-            for (auto rank:validRanks){
-                if (rank.second == 2){
+            for (auto rank : validRanks)
+            {
+                if (rank.second == 2)
+                {
                     added.push_back(rank.first);
                 }
             }
-            if (added.size() ==  threeStraights[0].second -  threeStraights[0].first + 1){
-                move = RankMove(kThreeStraightAddPair,threeStraights[0].first,threeStraights[0].second,added);
+            if (added.size() == threeStraights[0].second - threeStraights[0].first + 1)
+            {
+                move = RankMove(kThreeStraightAddPair, threeStraights[0].first, threeStraights[0].second, added);
             }
         }
-    }else if (isSameRankCounts && counts >= 6 && counts % 2 == 0 && (validRanks[validRanks.size() -1].first -  validRanks[0].first + 1) == counts/2){
+    }
+    else if (isSameRankCounts && counts >= 6 && counts % 2 == 0 && (validRanks[validRanks.size() - 1].first - validRanks[0].first + 1) == counts / 2)
+    {
         //2顺
-        move = RankMove(kTwoStraight,validRanks[0].first,validRanks[validRanks.size() -1].first);
-    }else if (isSameRankCounts && counts >= 5 && (validRanks[validRanks.size() -1].first -  validRanks[0].first + 1) == validRanks.size()){
+        move = RankMove(kTwoStraight, validRanks[0].first, validRanks[validRanks.size() - 1].first);
+    }
+    else if (isSameRankCounts && counts >= 5 && (validRanks[validRanks.size() - 1].first - validRanks[0].first + 1) == validRanks.size())
+    {
         //顺子
-        move = RankMove(kStraight,validRanks[0].first,validRanks[validRanks.size() -1].first);
-    }else if (validRanks.size() == 1)
+        move = RankMove(kStraight, validRanks[0].first, validRanks[validRanks.size() - 1].first);
+    }
+    else if (validRanks.size() == 1)
     {
         //只有一种牌
         switch (validRanks[0].second)
@@ -539,7 +574,7 @@ RankMove buildMoveByPokersCounts(RankCountsArray &countsArray)
     {
         //王炸，或3带1
         if (counts == 2 && validRanks[0].first == kPokerJoker_RANK)
-        {//王炸
+        { //王炸
             move = RankMove(kKingBomb, validRanks[0].first, validRanks[1].first);
         }
         else if (counts == 4)
@@ -570,7 +605,7 @@ RankMove buildMoveByPokersCounts(RankCountsArray &countsArray)
     else if (validRanks.size() == 3)
     {
         //4带2
-         if (counts == 6)
+        if (counts == 6)
         {
             //4带2单
             if (maxRank.second == 4)
@@ -635,21 +670,21 @@ RankCountsArray rankMove2Counts(RankMove &move)
         break;
     case kThreeAddSingle: //三带一
         countsArray[move.StartRank()] = 3;
-        countsArray[move.AddedRanks()[0]] += 1;
+        //countsArray[move.AddedRanks()[0]] += 1;
         break;
     case kThreeAddPair: //三带对
         countsArray[move.StartRank()] = 3;
-        countsArray[move.AddedRanks()[0]] += 2;
+        //countsArray[move.AddedRanks()[0]] += 2;
         break;
     case kFourAddTwoSingles: //四带两单牌
         countsArray[move.StartRank()] = 4;
-        countsArray[move.AddedRanks()[0]] += 1;
-        countsArray[move.AddedRanks()[1]] += 1;
+        //countsArray[move.AddedRanks()[0]] += 1;
+        //countsArray[move.AddedRanks()[1]] += 1;
         break;
     case kFourAddTwoPairs: //四带两对牌
         countsArray[move.StartRank()] = 4;
-        countsArray[move.AddedRanks()[0]] += 2;
-        countsArray[move.AddedRanks()[1]] += 2;
+        //countsArray[move.AddedRanks()[0]] += 2;
+        //countsArray[move.AddedRanks()[1]] += 2;
         break;
     case kStraight: //顺子
         for (RankType rank = move.StartRank(); rank <= move.EndRank(); rank++)
@@ -669,23 +704,16 @@ RankCountsArray rankMove2Counts(RankMove &move)
             countsArray[rank] = 3;
         }
         break;
-    case kThreeStraightAddOne: // 飞机带单翅膀
-        for (RankType rank = move.StartRank(); rank <= move.EndRank(); rank++)
-        {
-            countsArray[rank] = 3;
-       }
-       for(auto rank : move.AddedRanks()){
-            countsArray[rank] += 1;
-       }
-        break;
+    case kThreeStraightAddOne:  // 飞机带单翅膀
     case kThreeStraightAddPair: // 飞机带双翅膀
         for (RankType rank = move.StartRank(); rank <= move.EndRank(); rank++)
         {
             countsArray[rank] = 3;
         }
-        for(auto rank : move.AddedRanks()){
-            countsArray[rank] += 2;
-       }
+        // for (auto rank : move.AddedRanks())
+        // {
+        //     countsArray[rank] += 1;
+        // }
         break;
     case kBomb: // 炸弹，包括癞子炸弹，需要结合牌值编码比较大小。
         countsArray[move.StartRank()] = 4;
@@ -698,6 +726,32 @@ RankCountsArray rankMove2Counts(RankMove &move)
         break;
     }
     return countsArray;
+}
+
+std::vector<RankMove> parseKickerByType(RankCountsArray &rankCounts, LandlordMoveType type)
+{
+    std::vector<RankMove> moves;
+    for (int i = 0; i <= kPokerJOKER_RANK; i++)
+    {
+        if (type == kSingle)
+        {
+            if (rankCounts[i] > 0)
+            {
+                //增加一个单张move
+                moves.push_back(RankMove(kSingle, i));
+            }
+        }
+        else if (type == kPair)
+        {
+            if (rankCounts[i] > 1)
+            {
+                //增加一个对子move
+                moves.push_back(RankMove(kPair, i));
+            }
+        }
+    }
+
+    return moves;
 }
 
 } // namespace landlord_learning_env

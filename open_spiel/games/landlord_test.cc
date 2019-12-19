@@ -74,7 +74,7 @@ void SimpleLandlordTests() {
   std::vector<Action> legalActions = state->LegalActions();
   state->ApplyAction(legalActions[0]);  // Spawn B top-right
   std::cout << state->ToString() << std::endl;
-   state->ApplyAction(BidAction::kThree);
+   state->ApplyAction(BidAction::kBidThree);
    std::vector<double> obs;
    state->ObservationAsNormalizedVector(state->CurrentPlayer(),&obs);
 }
@@ -83,7 +83,7 @@ void SimpleLandlordTests() {
 }  // namespace open_spiel
 
 int main(int argc, char **argv) { 
-  open_spiel::landlord::SimpleLandlordTests();
+  //open_spiel::landlord::SimpleLandlordTests();
   open_spiel::landlord::encodeTests();
   open_spiel::landlord::BasicLandlordTests(); 
 
