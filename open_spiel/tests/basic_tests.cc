@@ -16,6 +16,9 @@
 
 #include <iostream>
 #include <memory>
+#include <numeric>
+#include <optional>
+#include <random>
 #include <set>
 #include <string>
 
@@ -32,6 +35,7 @@ namespace {
 
 constexpr int kInvalidHistoryPlayer = -300;
 constexpr int kInvalidHistoryAction = -301;
+constexpr double kUtilitySumTolerance = 1e-9;
 
 // Information about the simulation history. Used to track past states and
 // actions for rolling back simulations via UndoAction, and check History.
@@ -189,22 +193,46 @@ void TestHistoryContainsActions(const Game& game,
   }
 }
 
+void CheckReturnsSum(const Game& game, const State& state) {
+  std::vector<double> returns = state.Returns();
+  double rsum = std::accumulate(returns.begin(), returns.end(), 0.0);
+
+  switch (game.GetType().utility) {
+    case GameType::Utility::kZeroSum: {
+      SPIEL_CHECK_TRUE(Near(rsum, 0.0, kUtilitySumTolerance));
+      break;
+    }
+    case GameType::Utility::kConstantSum: {
+      SPIEL_CHECK_TRUE(Near(rsum, game.UtilitySum(), kUtilitySumTolerance));
+      break;
+    }
+    case GameType::Utility::kIdentical: {
+      for (int i = 1; i < returns.size(); ++i) {
+        SPIEL_CHECK_TRUE(
+            Near(returns[i], returns[i - 1], kUtilitySumTolerance));
+      }
+      break;
+    }
+    case GameType::Utility::kGeneralSum: {
+      break;
+    }
+  }
+}
+
 void RandomSimulation(std::mt19937* rng, const Game& game, bool undo,
                       bool serialize) {
   std::vector<HistoryItem> history;
   std::vector<double> episode_returns(game.NumPlayers(), 0);
 
-  int infostate_vector_size =
-      game.GetType().provides_information_state_as_normalized_vector
-          ? game.InformationStateNormalizedVectorSize()
-          : 0;
+  int infostate_vector_size = game.GetType().provides_information_state_tensor
+                                  ? game.InformationStateTensorSize()
+                                  : 0;
   std::cout << "Information state vector size: " << infostate_vector_size
             << std::endl;
 
-  int observation_vector_size =
-      game.GetType().provides_observation_as_normalized_vector
-          ? game.ObservationNormalizedVectorSize()
-          : 0;
+  int observation_vector_size = game.GetType().provides_observation_tensor
+                                    ? game.ObservationTensorSize()
+                                    : 0;
   std::cout << "Observation vector size: " << observation_vector_size
             << std::endl;
 
@@ -238,7 +266,7 @@ void RandomSimulation(std::mt19937* rng, const Game& game, bool undo,
       // Chance node; sample one according to underlying distribution
       std::vector<std::pair<Action, double>> outcomes = state->ChanceOutcomes();
       Action action =
-          open_spiel::SampleChanceOutcome(
+          open_spiel::SampleAction(
               outcomes, std::uniform_real_distribution<double>(0.0, 1.0)(*rng))
               .first;
 
@@ -279,14 +307,13 @@ void RandomSimulation(std::mt19937* rng, const Game& game, bool undo,
         // Check the information state, if supported.
         if (infostate_vector_size > 0) {
           std::vector<double> infostate_vector =
-              state->InformationStateAsNormalizedVector(p);
+              state->InformationStateTensor(p);
           SPIEL_CHECK_EQ(infostate_vector.size(), infostate_vector_size);
         }
 
         // Check the observation state vector, if supported.
         if (observation_vector_size > 0) {
-          std::vector<double> obs_vector =
-              state->ObservationAsNormalizedVector(p);
+          std::vector<double> obs_vector = state->ObservationTensor(p);
           SPIEL_CHECK_EQ(obs_vector.size(), observation_vector_size);
         }
       }
@@ -307,14 +334,13 @@ void RandomSimulation(std::mt19937* rng, const Game& game, bool undo,
       // First, check the information state vector, if supported.
       if (infostate_vector_size > 0) {
         std::vector<double> infostate_vector =
-            state->InformationStateAsNormalizedVector(player);
+            state->InformationStateTensor(player);
         SPIEL_CHECK_EQ(infostate_vector.size(), infostate_vector_size);
       }
 
       // Check the observation state vector, if supported.
       if (observation_vector_size > 0) {
-        std::vector<double> obs_vector =
-            state->ObservationAsNormalizedVector(player);
+        std::vector<double> obs_vector = state->ObservationTensor(player);
         SPIEL_CHECK_EQ(obs_vector.size(), observation_vector_size);
       }
 
@@ -358,12 +384,15 @@ void RandomSimulation(std::mt19937* rng, const Game& game, bool undo,
   // for example, as a final observation in an RL environment.
   for (auto p = Player{0}; p < game.NumPlayers(); p++) {
     if (infostate_vector_size > 0) {
-      std::vector<double> infostate_vector =
-          state->InformationStateAsNormalizedVector(p);
+      std::vector<double> infostate_vector = state->InformationStateTensor(p);
       SPIEL_CHECK_EQ(infostate_vector.size(), infostate_vector_size);
     }
   }
 
+  // Check that the returns satisfy the constraints based on the game type.
+  CheckReturnsSum(game, *state);
+
+  // Now, check each individual return is within bounds.
   auto returns = state->Returns();
   SPIEL_CHECK_EQ(returns.size(), game.NumPlayers());
   for (Player player = 0; player < game.NumPlayers(); player++) {
@@ -419,28 +448,57 @@ std::string ChanceOutcomeStr(const ActionsAndProbs& chance_outcomes) {
 }
 
 // Check chance outcomes in a state and all child states.
+// We check that:
+// - That LegalActions(kChancePlayerId) (which often defaults to the actions in
+//   ChanceOutcomes) and LegalActions() return the same result.
+// - All the chance outcome actions are legal actions
+// - All the chance outcome actions are different from each other.
+// - That the probabilities are within [0, 1] and sum to 1.
 void CheckChanceOutcomes(const State& state) {
   if (state.IsTerminal()) return;
   if (state.IsChanceNode()) {
     auto legal_actions = state.LegalActions(kChancePlayerId);
+    auto default_legal_actions = state.LegalActions();
+    if (legal_actions != default_legal_actions) {
+      SpielFatalError(absl::StrCat(
+          "Legalactions() and LegalActions(kChancePlayerId) do not give the "
+          "same result:",
+          "\nLegalActions():                ",
+          absl::StrJoin(default_legal_actions, ", "),
+          "\nLegalActions(kChancePlayerId): ",
+          absl::StrJoin(legal_actions, ", ")));
+    }
     std::set<Action> legal_action_set(legal_actions.begin(),
                                       legal_actions.end());
     auto chance_outcomes = state.ChanceOutcomes();
+
+    std::vector<Action> chance_outcome_actions;
     double sum = 0;
-    for (auto outcome : chance_outcomes) {
-      if (legal_action_set.count(outcome.first) == 0) {
+    for (const auto& [action, prob] : chance_outcomes) {
+      chance_outcome_actions.push_back(action);
+      if (legal_action_set.count(action) == 0) {
         SpielFatalError(absl::StrCat("LegalActions()=[",
                                      absl::StrJoin(legal_actions, ", "),
                                      "] inconsistent with ChanceOutcomes()=",
                                      ChanceOutcomeStr(chance_outcomes), "."));
       }
-      if (outcome.second <= 0. || outcome.second > 1) {
-        SpielFatalError(
-            absl::StrCat("Invalid probability for outcome: P(", outcome.first,
-                         ")=", outcome.second,
-                         "; all outcomes=", ChanceOutcomeStr(chance_outcomes)));
+      if (prob <= 0. || prob > 1) {
+        SpielFatalError(absl::StrCat(
+            "Invalid probability for outcome: P(", action, ")=", prob,
+            "; all outcomes=", ChanceOutcomeStr(chance_outcomes)));
       }
-      sum += outcome.second;
+      sum += prob;
+    }
+    std::set<Action> chance_outcome_actions_set(chance_outcome_actions.begin(),
+                                                chance_outcome_actions.end());
+    if (chance_outcome_actions.size() != chance_outcome_actions_set.size()) {
+      std::sort(chance_outcome_actions.begin(), chance_outcome_actions.end());
+      SpielFatalError(absl::StrCat(
+          "There are some duplicate actions in ChanceOutcomes\n. There are: ",
+          chance_outcome_actions_set.size(), " unique legal actions over ",
+          chance_outcome_actions.size(),
+          " chance outcome actions.\n Sorted legal actions:\n",
+          absl::StrJoin(chance_outcome_actions, ", ")));
     }
     constexpr double eps = 1e-5;
     if (sum < 1 - eps || sum > 1 + eps) {
@@ -452,14 +510,39 @@ void CheckChanceOutcomes(const State& state) {
   // Handles chance nodes, player nodes, including simultaneous nodes if
   // supported.
   for (auto action : state.LegalActions()) {
-    auto clone = state.Clone();
-    clone->ApplyAction(action);
-    CheckChanceOutcomes(*clone);
+    auto next_state = state.Child(action);
+    CheckChanceOutcomes(*next_state);
   }
 }
 
 void CheckChanceOutcomes(const Game& game) {
   CheckChanceOutcomes(*game.NewInitialState());
+}
+
+// Verifies that ResampleFromInfostate is correctly implemented.
+void ResampleInfostateTest(const Game& game, int num_sims) {
+  std::mt19937 rng;
+  UniformProbabilitySampler sampler;
+  for (int i = 0; i < num_sims; ++i) {
+    std::unique_ptr<State> state = game.NewInitialState();
+    while (!state->IsTerminal()) {
+      if (!state->IsChanceNode()) {
+        for (int p = 0; p < state->NumPlayers(); ++p) {
+          std::unique_ptr<State> other_state =
+              state->ResampleFromInfostate(p, sampler);
+          SPIEL_CHECK_EQ(state->InformationStateString(p),
+                         other_state->InformationStateString(p));
+          SPIEL_CHECK_EQ(state->InformationStateTensor(p),
+                         other_state->InformationStateTensor(p));
+          SPIEL_CHECK_EQ(state->CurrentPlayer(), other_state->CurrentPlayer());
+        }
+      }
+      std::vector<Action> actions = state->LegalActions();
+      std::uniform_int_distribution<int> dis(0, actions.size() - 1);
+      Action action = actions[dis(rng)];
+      state->ApplyAction(action);
+    }
+  }
 }
 
 }  // namespace testing

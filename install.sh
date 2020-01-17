@@ -18,8 +18,16 @@
 # The following should be easy to setup as a submodule:
 # https://git-scm.com/docs/git-submodule
 
+die() {
+  echo "$*" 1>&2
+  exit 1
+}
+
 set -e  # exit when any command fails
 set -x
+
+MYDIR="$(dirname "$(realpath "$0")")"
+source "${MYDIR}/open_spiel/scripts/global_variables.sh"
 
 # 1. Clone the external dependencies before installing systen packages, to make
 # sure they are present even if later commands fail.
@@ -49,16 +57,56 @@ fi
 [[ -d open_spiel/games/bridge/double_dummy_solver ]] || \
   git clone -b 'develop' --single-branch --depth 1 https://github.com/jblespiau/dds.git  \
   open_spiel/games/bridge/double_dummy_solver
+
 # `master` is a moving branch, but we never had issues. Let's use it and
 # checkout a specific commit only if an issue occur one day.
 [[ -d open_spiel/abseil-cpp ]] || \
   git clone -b 'master' --single-branch --depth 1 https://github.com/abseil/abseil-cpp.git \
   open_spiel/abseil-cpp
 
+# Optional dependencies.
+DIR="open_spiel/games/hanabi/hanabi-learning-environment"
+if [[ ${BUILD_WITH_HANABI:-"ON"} == "ON" ]] && [[ ! -d ${DIR} ]]; then
+  git clone -b 'master' --single-branch --depth 15 https://github.com/deepmind/hanabi-learning-environment.git ${DIR}
+  # We checkout a specific CL to prevent future breakage due to changes upstream
+  pushd ${DIR}
+  git checkout  'b31c973'
+  popd
+fi
+
+# This Github repository contains the raw code from the ACPC server
+# http://www.computerpokercompetition.org/downloads/code/competition_server/project_acpc_server_v1.0.42.tar.bz2
+# with the code compiled as C++ within a namespace.
+DIR="open_spiel/games/universal_poker/acpc"
+if [[ ${BUILD_WITH_ACPC:-"ON"} == "ON" ]] && [[ ! -d ${DIR} ]]; then
+  git clone -b 'master' --single-branch --depth 1  https://github.com/jblespiau/project_acpc_server.git ${DIR}
+fi
 
 # 2. Install other required system-wide dependencies
+
+# Install Julia if required and not present already.
+if [[ ${BUILD_WITH_JULIA:-"OFF"} == "ON" ]]; then
+  if which julia >/dev/null; then
+    JULIA_VERSION_INFO=`julia --version`
+    echo -e "\e[33m$JULIA_VERSION_INFO is already installed.\e[0m"
+  else
+    JULIA_INSTALLER="open_spiel/scripts/jill.sh"
+    if [[ ! -f $JULIA_INSTALLER ]]; then
+    curl https://raw.githubusercontent.com/abelsiqueira/jill/master/jill.sh -o jill.sh
+    mv jill.sh $JULIA_INSTALLER
+    fi
+    JULIA_VERSION=1.3.1 bash $JULIA_INSTALLER -y
+    PATH=${PATH}:${HOME}/.local/bin
+  fi
+
+  # Install dependencies.
+  # TODO(author11) Remove the special-case CxxWrap installation. This may require waiting for v0.9 to be officially released.
+  julia --project="${MYDIR}/open_spiel/julia" -e 'using Pkg; Pkg.instantiate(); Pkg.add(Pkg.PackageSpec(name="CxxWrap", rev="0c82e3e383ddf2db1face8ece22d0a552f0ca11a"));'
+fi
+
+# Install other system-wide packages.
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
-  EXT_DEPS="virtualenv cmake python3 python3-dev python3-pip python3-setuptools python3-wheel"
+  EXT_DEPS="virtualenv clang cmake python3 python3-dev python3-pip python3-setuptools python3-wheel"
   APT_GET=`which apt-get`
   if [ "$APT_GET" = "" ]
   then
@@ -84,8 +132,9 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
     sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${OS_PYTHON_VERSION} 10
   fi
 elif [[ "$OSTYPE" == "darwin"* ]]; then  # Mac OSX
-  [[ -x "$(type python3)" ]] || brew install python3 || echo "** Warning: failed 'brew install python3' -- continuing"
-  [[ -x "$(type g++-7)" ]] || brew install gcc@7 || echo "** Warning: failed 'brew install gcc@7' -- continuing"
+  [[ -x `which realpath` ]] || brew install coreutils || echo "** Warning: failed 'brew install coreutils' -- continuing"
+  [[ -x `which python3` ]] || brew install python3 || echo "** Warning: failed 'brew install python3' -- continuing"
+  [[ -x `which clang++` ]] || die "Clang not found. Please install or upgrade XCode and run the command-line developer tools"
   curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
   python3 get-pip.py
   pip3 install virtualenv
@@ -94,5 +143,3 @@ else
        "Feel free to contribute the install for a new OS."
   exit 1
 fi
-
-

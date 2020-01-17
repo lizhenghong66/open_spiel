@@ -35,6 +35,18 @@ constexpr const char* kSerializeMetaSectionHeader = "[Meta]";
 constexpr const char* kSerializeGameSectionHeader = "[Game]";
 constexpr const char* kSerializeStateSectionHeader = "[State]";
 
+// Returns the available parameter keys, to be used as a utility function.
+std::string ListValidParameters(
+    const std::map<std::string, GameParameter>& param_spec) {
+  std::vector<std::string> available_keys;
+  available_keys.reserve(param_spec.size());
+  for (const auto& item : param_spec) {
+    available_keys.push_back(item.first);
+  }
+  std::sort(available_keys.begin(), available_keys.end());
+  return absl::StrJoin(available_keys, ", ");
+}
+
 // Check on supplied parameters for game creation.
 // Issues a SpielFatalError if any are missing, of the wrong type, or
 // unexpectedly present.
@@ -43,10 +55,17 @@ void ValidateParams(const GameParameters& params,
   // Check all supplied parameters are supported and of the right type.
   for (const auto& param : params) {
     const auto it = param_spec.find(param.first);
-    if (it == param_spec.end())
-      SpielFatalError(absl::StrCat("Unknown parameter ", param.first));
+    if (it == param_spec.end()) {
+      SpielFatalError(absl::StrCat(
+          "Unknown parameter ", param.first,
+          ". Available parameters are: ", ListValidParameters(param_spec)));
+    }
     if (it->second.type() != param.second.type()) {
-      SpielFatalError(absl::StrCat("Wrong type for parameter ", param.first));
+      SpielFatalError(absl::StrCat(
+          "Wrong type for parameter ", param.first,
+          ". Expected type: ", GameParameterTypeToString(it->second.type()),
+          ", got ", GameParameterTypeToString(param.second.type()), " with ",
+          param.second.ToString()));
     }
   }
   // Check we aren't missing any mandatory parameters.
@@ -302,8 +321,8 @@ bool Game::ParameterValue<bool>(const std::string& key,
   }
 }
 
-std::pair<Action, double> SampleChanceOutcome(const ActionsAndProbs& outcomes,
-                                              double z) {
+std::pair<Action, double> SampleAction(const ActionsAndProbs& outcomes,
+                                       double z) {
   double sum = 0;
 
   // First do a check that this is indeed a proper discrete distribution.
@@ -343,6 +362,15 @@ std::string State::Serialize() const {
   SPIEL_CHECK_NE(game_->GetType().chance_mode,
                  GameType::ChanceMode::kSampledStochastic);
   return absl::StrCat(absl::StrJoin(History(), "\n"), "\n");
+}
+
+Action State::StringToAction(Player player,
+                             const std::string& action_str) const {
+  for (const Action action : LegalActions()) {
+    if (action_str == ActionToString(player, action)) return action;
+  }
+  SpielFatalError(
+      absl::StrCat("Couldn't find an action matching ", action_str));
 }
 
 std::unique_ptr<State> Game::DeserializeState(const std::string& str) const {

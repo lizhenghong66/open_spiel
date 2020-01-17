@@ -25,7 +25,6 @@ from open_spiel.python.algorithms import cfr
 from open_spiel.python.algorithms import exploitability
 import pyspiel
 
-
 # pylint: disable=protected-access
 _CFRSolverBase = cfr._CFRSolverBase
 _update_current_policy = cfr._update_current_policy
@@ -47,7 +46,7 @@ class CFRBRSolver(_CFRSolverBase):
 
   It uses an exact Best Response and full tree traversal.
 
-  One iteration for a n-player game consist of the following:
+  One iteration for a n-player game consists of the following:
 
   - Compute the BR of each player against the rest of the players.
   - Then, for each player p sequentially (from player 0 to N-1):
@@ -102,7 +101,8 @@ class CFRBRSolver(_CFRSolverBase):
     # pylint: disable=g-long-lambda
     current_policy = policy.PolicyFromCallable(
         self._game,
-        lambda state: self._get_infostate_policy(state.information_state()))
+        lambda state: self._get_infostate_policy(state.information_state_string(
+        )))
     # pylint: disable=g-long-lambda
 
     for player_id in range(self._game.num_players()):

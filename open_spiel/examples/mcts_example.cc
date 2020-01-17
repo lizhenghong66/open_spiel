@@ -14,8 +14,8 @@
 
 #include <array>
 #include <cstdio>
-#include <memory>
 #include <map>
+#include <memory>
 #include <random>
 #include <string>
 #include <vector>
@@ -50,21 +50,16 @@ uint_fast32_t Seed() {
 
 std::unique_ptr<open_spiel::Bot> InitBot(
     std::string type, const open_spiel::Game& game, open_spiel::Player player,
-    const open_spiel::algorithms::Evaluator& evaluator) {
+    open_spiel::algorithms::Evaluator* evaluator) {
   if (type == "random") {
-    return open_spiel::MakeUniformRandomBot(game, player, Seed());
+    return open_spiel::MakeUniformRandomBot(player, Seed());
   }
 
   if (type == "mcts") {
     return std::make_unique<open_spiel::algorithms::MCTSBot>(
-        game,
-        player,
-        evaluator,
-        absl::GetFlag(FLAGS_uct_c),
+        game, evaluator, absl::GetFlag(FLAGS_uct_c),
         absl::GetFlag(FLAGS_max_simulations),
-        absl::GetFlag(FLAGS_max_memory_mb),
-        absl::GetFlag(FLAGS_solve),
-        Seed(),
+        absl::GetFlag(FLAGS_max_memory_mb), absl::GetFlag(FLAGS_solve), Seed(),
         absl::GetFlag(FLAGS_verbose));
   }
   open_spiel::SpielFatalError("Bad player type. Known types: mcts, random");
@@ -81,8 +76,7 @@ open_spiel::Action GetAction(const open_spiel::State& state,
 
 std::pair<std::vector<double>, std::vector<std::string>> PlayGame(
     const open_spiel::Game& game,
-    std::vector<std::unique_ptr<open_spiel::Bot>>& bots,
-    std::mt19937& rng,
+    std::vector<std::unique_ptr<open_spiel::Bot>>& bots, std::mt19937& rng,
     const std::vector<std::string>& initial_actions) {
   bool quiet = absl::GetFlag(FLAGS_quiet);
   std::unique_ptr<open_spiel::State> state = game.NewInitialState();
@@ -103,15 +97,14 @@ std::pair<std::vector<double>, std::vector<std::string>> PlayGame(
 
   while (!state->IsTerminal()) {
     open_spiel::Player player = state->CurrentPlayer();
-    if (!quiet)
-      std::cerr << "player turn: " << player << std::endl;
+    if (!quiet) std::cerr << "player turn: " << player << std::endl;
 
     open_spiel::Action action;
     if (state->IsChanceNode()) {
       // Chance node; sample one according to underlying distribution.
       open_spiel::ActionsAndProbs outcomes = state->ChanceOutcomes();
       action =
-          open_spiel::SampleChanceOutcome(
+          open_spiel::SampleAction(
               outcomes, std::uniform_real_distribution<double>(0.0, 1.0)(rng))
               .first;
       if (!quiet)
@@ -122,13 +115,16 @@ std::pair<std::vector<double>, std::vector<std::string>> PlayGame(
           "MCTS not supported for games with simultaneous actions.");
     } else {
       // Decision node, ask the right bot to make its action
-      auto bot_choice = bots[player]->Step(*state);
-      action = bot_choice.second;
+      action = bots[player]->Step(*state);
       if (!quiet)
         std::cerr << "Chose action: " << state->ActionToString(player, action)
                   << std::endl;
     }
-
+    for (open_spiel::Player p = 0; p < bots.size(); ++p) {
+      if (p != player) {
+        bots[p]->InformAction(*state, player, action);
+      }
+    }
     history.push_back(state->ActionToString(player, action));
     state->ApplyAction(action);
 
@@ -160,8 +156,8 @@ int main(int argc, char** argv) {
       absl::GetFlag(FLAGS_rollout_count), Seed());
 
   std::vector<std::unique_ptr<open_spiel::Bot>> bots;
-  bots.push_back(InitBot(absl::GetFlag(FLAGS_player1), *game, 0, evaluator));
-  bots.push_back(InitBot(absl::GetFlag(FLAGS_player2), *game, 1, evaluator));
+  bots.push_back(InitBot(absl::GetFlag(FLAGS_player1), *game, 0, &evaluator));
+  bots.push_back(InitBot(absl::GetFlag(FLAGS_player2), *game, 1, &evaluator));
 
   std::vector<std::string> initial_actions;
   for (int i = 1; i < positional_args.size(); ++i) {
@@ -191,4 +187,6 @@ int main(int argc, char** argv) {
             << std::endl;
   std::cerr << "Overall returns: " << absl::StrJoin(overall_returns, ",")
             << std::endl;
+
+  return 0;
 }
