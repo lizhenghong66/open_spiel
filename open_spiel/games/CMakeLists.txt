@@ -109,17 +109,12 @@ add_library (games OBJECT ${GAME_SOURCES})
 
 target_include_directories (games PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-<<<<<<< HEAD
-# Uncomment to enable Hanabi.
-#add_subdirectory (hanabi)
-=======
 if (${BUILD_WITH_HANABI})
   add_subdirectory (hanabi)
 endif()
 if (${BUILD_WITH_ACPC})
   add_subdirectory(universal_poker)
 endif()
->>>>>>> 7aa90aa239f62526ed7ff51b54b71f3b873b1c0c
 
 # Uncomment to build the Ludii demo
 # add_subdirectory (ludii)

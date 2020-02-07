@@ -32,7 +32,8 @@ void ScoringTests() {
 void BasicGameTests() {
   testing::LoadGameTest("bridge_uncontested_bidding");
   testing::NoChanceOutcomesTest(*LoadGame("bridge_uncontested_bidding"));
-  testing::RandomSimTest(*LoadGame("bridge_uncontested_bidding"), 3);
+  //testing::RandomSimTest(*LoadGame("bridge_uncontested_bidding"), 3);
+  testing::RandomSimTest(*LoadGame("bridge"), 3);
 }
 
 void DeserializeStateTest() {

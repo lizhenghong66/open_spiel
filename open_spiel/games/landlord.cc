@@ -102,7 +102,7 @@ std::shared_ptr<const Game> OpenSpielLandlordGame::Clone() const
   return std::shared_ptr<Game>(new OpenSpielLandlordGame(GetParameters()));
 }
 
-std::vector<int> OpenSpielLandlordGame::ObservationNormalizedVectorShape() const
+std::vector<int> OpenSpielLandlordGame::ObservationTensorShape() const
 {
   return {ObservationNormalizedVectorLen};
 }
@@ -375,7 +375,7 @@ void OpenSpielLandlordState::DoApplyAction(Action action)
   }
 }
 
-std::string OpenSpielLandlordState::Observation(Player player) const
+std::string OpenSpielLandlordState::ObservationString(Player player) const
 {
   return "";
 }
@@ -390,10 +390,10 @@ std::string OpenSpielLandlordState::Observation(Player player) const
  * 当前组合牌带牌数量：最大5（5个3连带5单 [5*4 = 20]）: 00000,1000,11000,11100,11110,11111)    5
  * 最近的3个action：直接二进制编码。                                                          9 * 3                  
  */
-void OpenSpielLandlordState::ObservationAsNormalizedVector(
+void OpenSpielLandlordState::ObservationTensor(
     Player player, std::vector<double> *values) const
 {
-  values->resize(game_->ObservationNormalizedVectorSize());
+  values->resize(game_->ObservationTensorSize());
   std::fill(values->begin(), values->end(), 0);
 
   int offset = 0;

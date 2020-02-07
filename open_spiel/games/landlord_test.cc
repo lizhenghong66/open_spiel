@@ -76,7 +76,7 @@ void SimpleLandlordTests() {
   std::cout << state->ToString() << std::endl;
    state->ApplyAction(BidAction::kBidThree);
    std::vector<double> obs;
-   state->ObservationAsNormalizedVector(state->CurrentPlayer(),&obs);
+   state->ObservationTensor(state->CurrentPlayer(),&obs);
 }
 }  // namespace
 }  // namespace landlord

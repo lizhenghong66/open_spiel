@@ -14,16 +14,19 @@ void print(std::vector<std::vector<int>> cmbs){
 }
 int main(int argc, char** argv) {
    std::vector<std::vector<int>> cmbs = landlord_learning_env::combine(5,3);
+   std::cout << "test combine(5,3)" << std::endl;
    assert(cmbs.size() == 10);
    assert(cmbs[0].size() == 3);
     print(cmbs);
 
    cmbs = landlord_learning_env::combine(5,1);
+   std::cout << "test combine(5,1)" << std::endl;
    assert(cmbs.size() == 5);
    assert(cmbs[0].size() == 1);
    print(cmbs);
 
    cmbs = landlord_learning_env::combine(10,2);
+   std::cout << "test combine(10,2)" << std::endl;
    assert(cmbs.size() == 45);
    assert(cmbs[0].size() == 2);
    print(cmbs);

@@ -19,7 +19,7 @@ if(APPLE)
   set (CMAKE_FIND_FRAMEWORK LAST)
 else()
   set (CMAKE_CXX_FLAGS "-g -Wno-everything")
-  set (CMAKE_CXX_FLAGS "-Wno-everything")
+  #set (CMAKE_CXX_FLAGS "-Wno-everything")
 endif()
 
 # Position-independent code is needed for Python extension modules.

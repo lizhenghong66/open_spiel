@@ -152,7 +152,7 @@ public:
   double MinUtility() const override;
   double MaxUtility() const override;
   std::shared_ptr<const Game> Clone() const override;
-  std::vector<int> ObservationNormalizedVectorShape() const override;
+  std::vector<int> ObservationTensorShape() const override;
   int MaxGameLength() const override;
 
   /* const landlord_learning_env::ObservationEncoder& Encoder() const {
@@ -197,9 +197,9 @@ public:
   // state would have to include the entire history of the game, and is
   // impractically large.
   // The observation by default includes knowledge inferred from past hints.
-  std::string Observation(Player player) const override;
-  void ObservationAsNormalizedVector(Player player,
-                                     std::vector<double> *values) const;
+  std::string ObservationString(Player player) const override;
+  void ObservationTensor(Player player,
+                                     std::vector<double> *values) const override;
 
   std::unique_ptr<State> Clone() const override;
   //ActionsAndProbs ChanceOutcomes() const override;

@@ -568,7 +568,10 @@ Player BridgeState::CurrentPlayer() const {
       Partnership(current_player_) == Partnership(contract_.declarer)) {
     // Declarer chooses cards for both players.
     return contract_.declarer;
-  } else {
+  } else if (phase_ == Phase::kGameOver){
+        return kTerminalPlayerId;
+  }
+  else {
     return current_player_;
   }
 }
