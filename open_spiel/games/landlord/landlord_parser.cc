@@ -29,9 +29,9 @@ void addSubContinueRanks(std::vector<std::pair<int, int>> &continueRanks,
      * count：连续的每种牌数量
      */
 std::vector<std::pair<int, int>> buildContinueRanks(
-    std::array<RankType, RANK_COUNTS> &rankCounts, //牌等级数量数组
-    int minCount,                                  //最少连续数量，如顺子最少5连张。
-    int count                                      //每种牌数量。
+    const std::array<RankType, RANK_COUNTS> &rankCounts, //牌等级数量数组
+    int minCount,                                        //最少连续数量，如顺子最少5连张。
+    int count                                            //每种牌数量。
 )
 {
     //查找连续的牌
@@ -393,7 +393,7 @@ void dispCardRanks(RankCardsArray &cardRanks)
     }
 }
 
-std::string rankCountsArray2String(RankCountsArray &countsArray)
+std::string rankCountsArray2String(const RankCountsArray &countsArray)
 {
     std::string strCounts = "";
     for (int i = 0; i < RANK_COUNTS - 1; i++)
@@ -752,6 +752,276 @@ std::vector<RankMove> parseKickerByType(RankCountsArray &rankCounts, LandlordMov
     }
 
     return moves;
+}
+
+/**
+ * add 2020/02/07
+ */
+std::vector<int> parseOrphanPokers(const RankCountsArray &rankCounts, int count)
+{
+    std::vector<int> orphanPokers;
+    for (int i = 0; i <= kPokerA_RANK; i++)
+    {
+        if (rankCounts[i] == count)
+        {
+            //增加一个炸弹move
+            orphanPokers.push_back(i);
+        }
+    }
+    return orphanPokers;
+}
+
+void addAndSortMove(std::vector<RankMove> &moves, const RankMove &newMove)
+{
+    moves.push_back(newMove);
+    std::sort(moves.begin(), moves.end());
+}
+
+void parseOrphanPokersByType(const RankCountsArray &rankCounts,
+                             RankMoveByType &oneHandCombs)
+{
+    //孤立牌
+    for (int i = 0; i <= kPokerJOKER_RANK; i++)
+    {
+        if (rankCounts[i] == 1)
+        {
+            //特殊处理王炸
+            if (i == kPokerJOKER_RANK && rankCounts[i - 1] == 1)
+            {
+                //有王炸
+                //oneHandCombs[kKingBomb].push_back(RankMove(kKingBomb, i - 1, i));
+                addAndSortMove(oneHandCombs[kKingBomb], RankMove(kKingBomb, i - 1, i));
+            }
+            else if (i == kPokerJoker_RANK && rankCounts[i + 1] == 1)
+            {
+                //do nothing,避免拆王炸
+            }
+            else
+            {
+                //增加一个单张move
+                //oneHandCombs[kSingle].push_back(RankMove(kSingle, i));
+                addAndSortMove(oneHandCombs[kSingle], RankMove(kSingle, i));
+            }
+        }
+        if (rankCounts[i] == 2)
+        {
+            //增加一个对子move
+            //oneHandCombs[kPair].push_back(RankMove(kPair, i));
+            addAndSortMove(oneHandCombs[kPair], RankMove(kPair, i));
+        }
+        if (rankCounts[i] == 3)
+        {
+            //增加一个三张move
+            //oneHandCombs[kThree].push_back(RankMove(kThree, i));
+            addAndSortMove(oneHandCombs[kThree], RankMove(kThree, i));
+        }
+        if (rankCounts[i] == 4)
+        {
+            //增加一个炸弹move
+            //oneHandCombs[kBomb].push_back(RankMove(kBomb, i));
+            addAndSortMove(oneHandCombs[kBomb], RankMove(kBomb, i));
+        }
+    }
+}
+
+void parseContinueCombs(const RankCountsArray &rankCounts,
+                        const std::vector<std::pair<int, int>> &continueRanks,
+                        const int continueCounts,
+                        const std::vector<int> &threes,
+                        const std::vector<int> &bombs,
+                        const RankMoveByType &preOneHandCombs,
+                        std::vector<RankMoveByType> &allHandCombs)
+{
+    for (auto continueRank : continueRanks)
+    {
+        //先提取一个连牌
+        RankMoveByType oneHandCombs = preOneHandCombs;
+        if (continueCounts == 1)
+        {
+            //oneHandCombs[kStraight].push_back(RankMove(kStraight, continueRank.first, continueRank.second));
+            addAndSortMove(oneHandCombs[kStraight],
+                           RankMove(kStraight, continueRank.first, continueRank.second));
+        }
+        else if (continueCounts == 2)
+        {
+            //oneHandCombs[kTwoStraight].push_back(RankMove(kTwoStraight, continueRank.first, continueRank.second));
+            addAndSortMove(oneHandCombs[kTwoStraight],
+                           RankMove(kTwoStraight, continueRank.first, continueRank.second));
+        }
+        else if (continueCounts == 3)
+        {
+            //oneHandCombs[kThreeStraight].push_back(RankMove(kThreeStraight, continueRank.first, continueRank.second));
+            addAndSortMove(oneHandCombs[kThreeStraight],
+                           RankMove(kThreeStraight, continueRank.first, continueRank.second));
+        }
+        else
+        {
+            return;
+        }
+        RankCountsArray newRankCounts = rankCounts;
+        //删除顺子牌
+        for (int i = continueRank.first; i <= continueRank.second; i++)
+        {
+            newRankCounts[i] -= continueCounts;
+        }
+        parseByTypeBase(newRankCounts, oneHandCombs, allHandCombs);
+        for (auto three : threes)
+        {
+            if (three >= continueRank.first && three <= continueRank.second)
+            {
+                RankMoveByType oneHandCombs = preOneHandCombs;
+                //oneHandCombs[kThree].push_back(RankMove(kThree, three));
+                addAndSortMove(oneHandCombs[kThree], RankMove(kThree, three));
+
+                RankCountsArray newRankCounts = rankCounts;
+                //删除三张牌
+                for (int i = continueRank.first; i <= continueRank.second; i++)
+                {
+                    newRankCounts[three] -= 3;
+                }
+                parseByTypeBase(newRankCounts, oneHandCombs, allHandCombs);
+            }
+        }
+        for (auto bomb : bombs)
+        {
+            if (bomb >= continueRank.first && bomb <= continueRank.second)
+            {
+                RankMoveByType oneHandCombs = preOneHandCombs;
+                //oneHandCombs[kBomb].push_back(RankMove(kBomb, bomb));
+                addAndSortMove(oneHandCombs[kBomb], RankMove(kBomb, bomb));
+
+                RankCountsArray newRankCounts = rankCounts;
+                //删除炸弹牌
+                for (int i = continueRank.first; i <= continueRank.second; i++)
+                {
+                    newRankCounts[bomb] -= 4;
+                }
+                parseByTypeBase(newRankCounts, oneHandCombs, allHandCombs);
+            }
+        }
+    }
+}
+
+std::vector<RankMoveByType> parseHandPokers(const RankCountsArray &rankCounts)
+{
+    RankMoveByType oneHandCombs;
+    std::vector<RankMoveByType> allHandCombs;
+    parseByTypeBase(rankCounts, oneHandCombs, allHandCombs);
+    std::vector<RankMoveByType> filteredAllHandCombs;
+    //std::copy(allHandCombs.begin(), allHandCombs.end(), filteredAllHandCombs.begin());
+    //return filteredAllHandCombs;
+    return allHandCombs;
+}
+
+void parseByTypeBase(const RankCountsArray &rankCounts,
+                     const RankMoveByType &preOneHandCombs,
+                     std::vector<RankMoveByType> &allHandCombs)
+{
+    //三张牌
+    std::vector<int> threes = parseOrphanPokers(rankCounts, 3);
+    //炸弹牌
+    std::vector<int> bombs = parseOrphanPokers(rankCounts, 4);
+
+    //查找连续顺子牌
+    std::vector<std::pair<int, int>> continueRanks1 = buildContinueRanks(rankCounts, 5, 1);
+    parseContinueCombs(rankCounts, continueRanks1, 1, threes, bombs,
+                       preOneHandCombs, allHandCombs);
+    //查找连续对子牌
+    std::vector<std::pair<int, int>> continueRanks2 = buildContinueRanks(rankCounts, 3, 2);
+    parseContinueCombs(rankCounts, continueRanks2, 2, threes, bombs,
+                       preOneHandCombs, allHandCombs);
+    //查找连续三张牌
+    std::vector<std::pair<int, int>> continueRanks3 = buildContinueRanks(rankCounts, 2, 3);
+    parseContinueCombs(rankCounts, continueRanks3, 3, threes, bombs,
+                       preOneHandCombs, allHandCombs);
+
+    if (continueRanks1.size() + continueRanks2.size() + continueRanks3.size() == 0)
+    {
+        //没有连牌，不需要递归解析
+        RankMoveByType oneHandCombs = preOneHandCombs;
+        parseOrphanPokersByType(rankCounts, oneHandCombs);
+        //allHandCombs.push_back(oneHandCombs);
+        bool isNewCombs = true;
+        for (auto comb : allHandCombs)
+        {
+            bool hasSameComb = true;
+            for (size_t i = 0; i < comb.size(); i++)
+            { //movetype
+                auto typeMoves = comb[i];
+                if (comb[i].size() != oneHandCombs[i].size())
+                {
+                    hasSameComb = false;
+                    break;
+                }
+                else
+                {
+                    for (size_t j = 0; j < comb[i].size(); j++)
+                    {
+                        if (!(comb[i][j] == oneHandCombs[i][j]))
+                        {
+                            hasSameComb = false;
+                            break;
+                        }
+                    }
+                    if (!hasSameComb){
+                        break;
+                    }
+                }
+            }
+            if (hasSameComb)
+            {
+                isNewCombs = false;
+                break;
+            }
+        }
+        if (isNewCombs)
+        {
+            //allHandCombs.insert(oneHandCombs);
+            allHandCombs.push_back(oneHandCombs);
+        }
+    }
+}
+std::string rankCountsArray2DispString(const RankCountsArray &countsArray){
+    std::string str("[");
+    for (size_t i = 0; i < countsArray.size(); i++)
+    {
+        if (countsArray[i] > 0){
+            makeRankString(i,countsArray[i],str);
+            str += ",";
+        }
+    }
+    str.replace(str.length()-1,1,"");
+    str += "]";
+    return str;    
+}
+
+std::string handCombToDispString(const RankMoveByType handComb){
+    std::string str("[");
+    for (int i = LandlordMoveType::kSingle; i <= LandlordMoveType::kKingBomb; i++)
+    {
+        if (handComb[i].size() >0){
+            //str += moveType2String((LandlordMoveType)i) +":";
+            str += "[";
+            for (auto move : handComb[i]){
+                 str += move.toArrayString();
+            }
+            str += "],";
+        }
+    }
+    str.replace(str.length()-1,1,"");
+    str += "]";
+    return str;
+}
+std::string allHandCombsToDispString(const std::vector<RankMoveByType> allHandCombs){
+    std::string str{""};
+    int count = 0;
+    for (auto combs : allHandCombs){
+        char lineBuffer[10];
+        snprintf ( lineBuffer, 10, "%3d", ++count );
+        str +=std::string(lineBuffer) + " : " +  handCombToDispString(combs)+"\n";
+    }
+    str.replace(str.length()-1,1,"");
+    return str;
 }
 
 } // namespace landlord_learning_env

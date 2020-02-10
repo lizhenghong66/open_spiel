@@ -1,8 +1,11 @@
-all:landlord_card_test landlord_deck_test landlord_parser_test landlord_action_test util_test 
+all:landlord_card_test landlord_move_test landlord_deck_test landlord_parser_test\
+	 landlord_action_test util_test 
 clean:
 	rm -f *_test
 landlord_card_test:landlord_card_test.cc
 	g++ -g -o landlord_card_test landlord_card_test.cc
+landlord_move_test:landlord_move_test.cc landlord_move.*
+	g++ -g -o landlord_move_test landlord_move_test.cc landlord_move.cc
 landlord_deck_test:landlord_deck_test.cc landlord_deck.* landlord_card.*
 	g++ -g -o landlord_deck_test landlord_deck_test.cc landlord_deck.cc
 landlord_parser_test:landlord_parser_test.cc landlord_parser.* landlord_card.* util.* landlord_move.*

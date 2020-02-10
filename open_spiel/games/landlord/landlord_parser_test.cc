@@ -11,6 +11,32 @@ namespace landlord_learning_env {
             }
             return cards;
     }
+    
+    void test_parseHandPokers(const std::array<RankType, RANK_COUNTS> &rankCounts){
+        std::vector<RankMoveByType> allHandCombs = parseHandPokers(rankCounts);
+        std::cout << rankCountsArray2DispString(rankCounts) << std::endl;
+        std::cout << "combs count:" << allHandCombs.size() << std::endl;
+        std::cout << allHandCombsToDispString(allHandCombs) << std::endl;
+        int combCount = 0;
+        for (auto handComb : allHandCombs)
+        {
+            combCount++;
+            std::cout << combCount << " combinations： " <<   std::endl;
+            for (size_t j = 0; j < handComb.size(); j++)
+            {
+                auto typeMoves = handComb[j];
+                if (typeMoves.size() > 0){
+                    std::cout << "\t" << moveType2String((LandlordMoveType)j) << ":" << std::endl;
+                    for (size_t k = 0; k < typeMoves.size(); k++)
+                    {
+                        auto move = typeMoves[k];
+                        std::cout << "\t\t" <<  k+1 << ":" << move.toString() << std::endl;
+                    }                  
+                }
+            }
+        }
+        
+    }
     void parser_test1(){
         std::vector<std::array<int,2>> pokers = {{0,0},{0,1},{1,1},{2,1},
         {1,2},{2,2},{3,2},{0,3},{1,3},{3,4},{2,4},{1,5},{2,6},{0,8},{1,8},{2,8},{3,8}};
@@ -20,6 +46,8 @@ namespace landlord_learning_env {
         std::array<RankType,RANK_COUNTS> expectedRankCounts ={1,3,3,2,2,1,1,0,4,0,0,0,0,0,0,0};
         assert(rankCounts == expectedRankCounts);
         std::cout << "tesk1 buildRankCounts  ok!" << std::endl;
+        test_parseHandPokers(rankCounts);
+        std::cout << "end parse hand combinations" << std::endl;
 
         //查找连续顺子牌
         std::vector<std::pair<int,int>> continueRanks1 = buildContinueRanks(rankCounts,5,1);
@@ -95,8 +123,9 @@ namespace landlord_learning_env {
 
         std::vector<RankMove> allMoves = parse(rankCounts);
         int count = 0;
+        std::string countsStr = rankCountsArray2String(rankCounts);
         for (auto move : allMoves){
-            std::cout << move.toString() << std::endl;
+            std::cout << count++ << " : " << move.toString() << " --- " << countsStr << std::endl;
         }
         std::cout << "allMoves size:" << allMoves.size() << std::endl;
         assert( allMoves.size() == 206);

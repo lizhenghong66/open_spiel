@@ -135,7 +135,8 @@ public:
     }
 
     std::string toString() const;
-
+    std::string toArrayString() const;
+    
 private:
     LandlordMoveType type_;
     RankType startRank_;

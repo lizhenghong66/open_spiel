@@ -47,6 +47,59 @@ std::string RankMove::toString() const{
             " --> " + std::to_string(endRank_)  + ","  +  pokers2String(addedRanks_);
         return str;
 }
+// void makeRankString(RankType rank,int count,std::string& str){
+//   for (size_t i = 0; i < count-1; i++)
+//   {
+//     str += rank2DispString(rank) +",";
+//   }
+  
+//   str += rank2DispString(rank);
+// }
+void makeContinueRankString(RankType startRank,RankType endRank,
+  int count,std::string& str){
+  for (size_t i = 0; i <= endRank - startRank; i++)
+    {
+      makeRankString(startRank+i,count,str);
+      str += ",";
+    }
+    str.replace(str.length()-1,1,"");
+}
+std::string RankMove::toArrayString() const{
+   std::string str = "[";
+   switch (type_)
+   {
+   case kSingle:
+     makeRankString(startRank_,1,str);
+     break;
+   case kPair:
+     makeRankString(startRank_,2,str);
+     break;
+  case kThree:
+     makeRankString(startRank_,3,str);
+     break;
+  case kBomb:
+     makeRankString(startRank_,4,str);
+     break;
+  case kKingBomb:
+     makeRankString(kPokerJoker_RANK,1,str);
+     str += ",";
+     makeRankString(kPokerJOKER_RANK,1,str);
+     break;
+  case kStraight:
+    makeContinueRankString(startRank_,endRank_,1,str);
+    break;
+  case kTwoStraight:
+    makeContinueRankString(startRank_,endRank_,2,str);
+    break;
+  case kThreeStraight:
+    makeContinueRankString(startRank_,endRank_,3,str);
+    break;    
+   default:
+     break;
+   }
+   str += "]";
+   return str;
+}
 
 void LandlordMove::chkValid(){
   switch (move_type_)
@@ -73,16 +126,6 @@ LandlordMove::LandlordMove(LandlordMoveType move_type,
     }else if (card.second == tian_laizi_rank_){
       tianLaiCount++;
     }
-  }
-}
-
-bool LandlordMove::operator==(const LandlordMove& other_move) const {
-  if (MoveType() != other_move.MoveType()) {
-    return false;
-  }
-  switch (MoveType()) {
-    default:
-      return true;
   }
 }
 

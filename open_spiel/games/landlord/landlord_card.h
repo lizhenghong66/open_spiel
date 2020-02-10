@@ -80,9 +80,13 @@ inline std::vector<Poker> cards2Pokers(std::vector<LandlordCard> cards){
     return pokers;
 }
 
+inline std::string rank2DispString(RankType rank){
+  return std::string{"3456789TJQKA2mMF"[rank]};
+}
 inline std::string card2String(LandlordCard card){
   std::string str =  card.first  == Suits::kNone?std::string():std::string()+"DCHS"[card.first];
-  str += "3456789TJQKA2mMF"[card.second];
+  //str += "3456789TJQKA2mMF"[card.second];
+  str += rank2DispString(card.second);
   return str;
 }
 
@@ -112,6 +116,14 @@ inline std::string pokers2String(std::vector<Poker> pokers){
     result += poker2String( pokers[pokers.size() -1]);
   }
   return result;
+}
+inline void makeRankString(RankType rank,int count,std::string& str){
+  for (size_t i = 0; i < count-1; i++)
+  {
+    str += rank2DispString(rank) +",";
+  }
+  
+  str += rank2DispString(rank);
 }
 }  // namespace landlord_learning_env
 
